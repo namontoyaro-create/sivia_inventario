@@ -80,7 +80,33 @@ CATALOGO: tuple[ProductoCatalogo, ...] = (
 )
 
 
+def validar_catalogo(catalogo: tuple[ProductoCatalogo, ...]) -> None:
+    """Rechaza campos obligatorios vacíos e identificadores duplicados.
+
+    Varios productos pueden compartir una clase de IA.
+    """
+    identificadores: set[str] = set()
+    campos_obligatorios = (
+        "id", "producto", "familia", "presentacion", "unidad_conteo", "clase_ia"
+    )
+
+    for producto in catalogo:
+        for campo in campos_obligatorios:
+            valor = getattr(producto, campo)
+            if not isinstance(valor, str) or not valor.strip():
+                raise ValueError(
+                    f"El campo '{campo}' debe contener texto en el producto "
+                    f"{producto.id!r}."
+                )
+
+        if producto.id in identificadores:
+            raise ValueError(f"Identificador duplicado: {producto.id}")
+        identificadores.add(producto.id)
+
+
 if __name__ == "__main__":
+    validar_catalogo(CATALOGO)
+    print("Catálogo validado correctamente.")
     print(f"SIVIA - Catálogo inicial: {len(CATALOGO)} productos\n")
 
     for producto in CATALOGO:

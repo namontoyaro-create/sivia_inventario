@@ -71,17 +71,18 @@ Implementado:
 
 - Entorno Python administrado con Poetry.
 - Carga y visualización de imágenes con OpenCV.
-- Pruebas de carga de imágenes, validación del catálogo y conteo con Pytest.
+- Pruebas de carga de imágenes, catálogo, conteo y comparación de stock con Pytest.
 - Catálogo estructurado de siete productos.
 - Validación de campos obligatorios e identificadores únicos del catálogo.
 - Comando de inicio del sistema.
 - Conteo por clase a partir de etiquetas, comprobado con datos simulados.
 - Relación del conteo con el catálogo, conservando coincidencias ambiguas y clases sin correspondencia.
+- Comparación de stock por producto con estados de faltante, sobrante o coincidencia, comprobada con datos simulados.
 
 Pendiente:
 
 - Detección mediante IA y conexión con el conteo para analizar imágenes.
-- Comparación con inventario.
+- Registro persistente de existencias y conexión de la comparación con resultados de detección verificados.
 - Interfaz y modo de prueba libre.
 
 ## Ejecutar la visualización
@@ -94,7 +95,7 @@ poetry run python -m sivia_inventario datos/imagenes/productos.jpg --mostrar
 
 Presiona una tecla dentro de la ventana para cerrarla. Sin `--mostrar`, el comando carga la imagen y muestra sus dimensiones en la terminal.
 
-La fotografía de prueba aún no está incluida en Git. Se puede sustituir la ruta por otra imagen local; si contiene espacios, debe escribirse entre comillas.
+La fotografía de prueba está incluida en Git. Se puede sustituir la ruta por otra imagen local; si contiene espacios, debe escribirse entre comillas.
 
 ## Consultar el catálogo
 
@@ -121,6 +122,16 @@ poetry run python -m sivia_inventario.resumen
 El ejemplo simulado muestra el identificador, el producto, la presentación y la cantidad. No analiza imágenes ni modifica stock.
 
 Una clase con varios productos candidatos se marca como ambigua y su cantidad se conserva una sola vez. Una clase ajena al catálogo también conserva su cantidad, con estado sin coincidencia. Las clases ausentes del conteo no se interpretan como stock cero.
+
+## Comprobar la comparación de stock
+
+```bash
+poetry run python -m sivia_inventario.inventario
+```
+
+Este ejemplo simula 20 candados registrados y 18 contados: diferencia de -2 y estado `faltante`. No lee imágenes ni guarda cambios de inventario.
+
+La comparación recibe explícitamente un producto y dos cantidades enteras no negativas. Ambas deben corresponder a la misma unidad y alcance. No resuelve clases ambiguas ni verifica por sí sola que una fotografía cubra todas las existencias.
 
 ## Ejecutar las pruebas
 

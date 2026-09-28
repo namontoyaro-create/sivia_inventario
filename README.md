@@ -78,11 +78,13 @@ Implementado:
 - Conteo por clase a partir de etiquetas, comprobado con datos simulados.
 - Relación del conteo con el catálogo, conservando coincidencias ambiguas y clases sin correspondencia.
 - Comparación de stock por producto con estados de faltante, sobrante o coincidencia, comprobada con datos simulados.
+- Archivo JSON de stock de referencia simulado para los siete productos, conectado con la comparación por producto.
+- Lectura del stock desde JSON, con validación de cantidades, identificadores y claves duplicadas. Los productos omitidos conservan stock desconocido.
 
 Pendiente:
 
 - Detección mediante IA y conexión con el conteo para analizar imágenes.
-- Registro persistente de existencias y conexión de la comparación con resultados de detección verificados.
+- Gestión de movimientos de inventario y conexión de la comparación con resultados de detección verificados.
 - Interfaz y modo de prueba libre.
 
 ## Ejecutar la visualización
@@ -129,9 +131,49 @@ Una clase con varios productos candidatos se marca como ambigua y su cantidad se
 poetry run python -m sivia_inventario.inventario
 ```
 
-Este ejemplo simula 20 candados registrados y 18 contados: diferencia de -2 y estado `faltante`. No lee imágenes ni guarda cambios de inventario.
+Este ejemplo lee el stock registrado de `P003` desde `datos/inventario/stock_prueba.json` y lo compara con un conteo simulado de 18 candados. Con las 20 unidades de referencia del archivo de prueba, produce una diferencia de -2 y estado `faltante`. No lee imágenes ni guarda cambios de inventario.
+
+Se puede indicar otro archivo de referencia:
+
+```bash
+poetry run python -m sivia_inventario.inventario --stock datos/inventario/stock_prueba.json
+```
+
+La salida identifica el archivo utilizado y el tipo de datos de referencia. El conteo de 18 unidades sigue siendo simulado. Si el producto no tiene stock registrado, el comando muestra un error en lugar de asumir cero.
 
 La comparación recibe explícitamente un producto y dos cantidades enteras no negativas. Ambas deben corresponder a la misma unidad y alcance. No resuelve clases ambiguas ni verifica por sí sola que una fotografía cubra todas las existencias.
+
+## Stock de referencia de prueba
+
+El archivo `datos/inventario/stock_prueba.json` contiene cantidades ficticias, marcadas con `tipo_datos: simulados`. No representa las existencias reales de Distribuidora Atencio ni un conteo obtenido de una imagen.
+
+Las claves de `stock_por_producto` son identificadores del catálogo, no índices ni nombres de clase del detector. Cada cantidad usa la presentación del producto correspondiente:
+
+| ID | Producto y presentación | Stock simulado |
+|---|---|---|
+| P001 | Clavos — bolsa | 30 |
+| P002 | Clavos — caja | 8 |
+| P003 | Candado — unidad | 20 |
+| P004 | Cerradura de sobreponer — unidad | 12 |
+| P005 | Tubería PVC — tubo | 25 |
+| P006 | Cemento — bolsa | 15 |
+| P007 | Disco de corte — unidad | 40 |
+
+Para visualizar y comprobar la sintaxis JSON:
+
+```bash
+poetry run python -m json.tool datos/inventario/stock_prueba.json
+```
+
+Para leerlo con las validaciones de SIVIA y mostrar los nombres del catálogo:
+
+```bash
+poetry run python -m sivia_inventario.stock datos/inventario/stock_prueba.json
+```
+
+La lectura conserva el tipo de datos (`simulados` o `reales`) declarado en el archivo y no modifica sus cantidades. Esta etiqueta describe el origen declarado; el sistema no certifica que los datos sean reales. Un producto omitido se muestra con stock desconocido, distinto de un cero explícito.
+
+El módulo de comparación utiliza estas cantidades por identificador de producto mediante `comparar_con_referencia`. La identificación del producto y el alcance del conteo deben resolverse antes de llamar a esta función.
 
 ## Ejecutar las pruebas
 

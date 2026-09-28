@@ -1,0 +1,13 @@
+{
+  "tipo_datos": "simulados",
+  "descripcion": "Stock de referencia ficticio para pruebas de SIVIA. No representa existencias reales de Distribuidora Atencio.",
+  "stock_por_producto": {
+    "P001": 30,
+    "P002": 8,
+    "P003": 20,
+    "P004": 12,
+    "P005": 25,
+    "P006": 15,
+    "P007": 40
+  }
+}

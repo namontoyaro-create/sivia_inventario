@@ -71,14 +71,16 @@ Implementado:
 
 - Entorno Python administrado con Poetry.
 - Carga y visualización de imágenes con OpenCV.
-- Pruebas de carga de imágenes y validación del catálogo con Pytest.
+- Pruebas de carga de imágenes, validación del catálogo y conteo con Pytest.
 - Catálogo estructurado de siete productos.
 - Validación de campos obligatorios e identificadores únicos del catálogo.
 - Comando de inicio del sistema.
+- Conteo por clase a partir de etiquetas, comprobado con datos simulados.
+- Relación del conteo con el catálogo, conservando coincidencias ambiguas y clases sin correspondencia.
 
 Pendiente:
 
-- Detección mediante IA y conteo automático.
+- Detección mediante IA y conexión con el conteo para analizar imágenes.
 - Comparación con inventario.
 - Interfaz y modo de prueba libre.
 
@@ -99,6 +101,26 @@ La fotografía de prueba aún no está incluida en Git. Se puede sustituir la ru
 ```bash
 poetry run python -m sivia_inventario.categorias
 ```
+
+## Comprobar el conteo con etiquetas simuladas
+
+```bash
+poetry run python -m sivia_inventario.conteo
+```
+
+Este ejemplo contiene cinco etiquetas `bolsa_clavos`, dos `caja_clavos` y tres `candado`, para un total de diez unidades. No lee imágenes ni ejecuta IA.
+
+La función de conteo recibe una etiqueta por objeto y no depende del catálogo. La eliminación de detecciones duplicadas corresponderá a la etapa de detección.
+
+## Comprobar la relación entre conteo y catálogo
+
+```bash
+poetry run python -m sivia_inventario.resumen
+```
+
+El ejemplo simulado muestra el identificador, el producto, la presentación y la cantidad. No analiza imágenes ni modifica stock.
+
+Una clase con varios productos candidatos se marca como ambigua y su cantidad se conserva una sola vez. Una clase ajena al catálogo también conserva su cantidad, con estado sin coincidencia. Las clases ausentes del conteo no se interpretan como stock cero.
 
 ## Ejecutar las pruebas
 

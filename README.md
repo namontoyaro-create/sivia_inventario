@@ -29,7 +29,7 @@ Estos componentes estarán separados para poder cambiar el detector sin modifica
 - **Catálogo / inventario:** detección de productos registrados de la empresa.
 - **Prueba libre:** búsqueda experimental de objetos mediante texto, utilizando posteriormente un detector de vocabulario abierto.
 
-El modo libre no dependerá del catálogo y sus resultados no modificarán automáticamente el inventario. Ambos modos de detección están pendientes de implementación.
+El modo libre no dependerá del catálogo y sus resultados no modificarán automáticamente el inventario. Ambos modos de detección están pendientes de implementación. La prueba técnica con el modelo general preentrenado no es detección de vocabulario abierto.
 
 ## Catálogo inicial
 
@@ -70,6 +70,8 @@ Por ejemplo, 18 unidades detectadas frente a 20 registradas producen una diferen
 Implementado:
 
 - Entorno Python administrado con Poetry.
+- Dependencias para detección instaladas: Ultralytics y PyTorch/Torchvision para CPU.
+- Comando de prueba de detección real con YOLO26n preentrenado, conteo por clase e imagen anotada. Sus clases generales no se relacionan automáticamente con el catálogo de ferretería.
 - Carga y visualización de imágenes con OpenCV.
 - Pruebas de carga de imágenes, catálogo, conteo y comparación de stock con Pytest.
 - Catálogo estructurado de siete productos.
@@ -83,9 +85,54 @@ Implementado:
 
 Pendiente:
 
-- Detección mediante IA y conexión con el conteo para analizar imágenes.
+- Adaptación y validación del detector para las siete clases de ferretería.
 - Gestión de movimientos de inventario y conexión de la comparación con resultados de detección verificados.
 - Interfaz y modo de prueba libre.
+
+## Entorno para detección con YOLO
+
+El proyecto usa Python 3.13 y Poetry. Desde la raíz del repositorio se pueden instalar las versiones registradas en `poetry.lock`:
+
+```bash
+poetry install
+```
+
+PyTorch y Torchvision se obtienen del repositorio oficial para CPU, configurado como fuente explícita en `pyproject.toml`. No se necesita CUDA para esta etapa.
+
+Versiones comprobadas en Windows de 64 bits:
+
+| Dependencia | Versión |
+|---|---|
+| PyTorch | 2.14.1+cpu |
+| Torchvision | 0.29.1+cpu |
+| Ultralytics | 8.4.171 |
+| OpenCV | 5.0.0 |
+
+Para comprobar la importación:
+
+```bash
+poetry run python -c "import torch; from ultralytics import YOLO; print('YOLO disponible'); print('PyTorch:', torch.__version__); print('CUDA disponible:', torch.cuda.is_available())"
+```
+
+En esta instalación para CPU, `CUDA disponible: False` es el resultado esperado. Esta comprobación no descarga pesos ni ejecuta detección. Las configuraciones locales que Ultralytics genere en la carpeta `Ultralytics/` están excluidas de Git.
+
+Instalar estas dependencias no entrena el modelo ni le enseña las clases del catálogo de SIVIA. Su adaptación al catálogo se realizará en pasos posteriores.
+
+## Primera prueba de detección real
+
+Desde la raíz del proyecto:
+
+```bash
+poetry run python -m sivia_inventario.deteccion datos/imagenes/productos.jpg
+```
+
+La primera ejecución descarga los pesos oficiales de `yolo26n.pt` en `modelos/` y requiere conexión a Internet. La predicción se realiza localmente en CPU, con un umbral de confianza de 0.50. La fotografía se carga desde el disco, sin enviarla a un servicio de detección.
+
+El comando cuenta las clases devueltas por el modelo y guarda una copia con las detecciones en `resultados/deteccion/`, con fecha y hora en el nombre. El original se conserva. Las carpetas de resultados y los pesos descargados están excluidos de Git.
+
+YOLO26n preentrenado utiliza las 80 clases generales de COCO, no las siete clases de ferretería. Puede no detectar la bolsa o la caja de clavos, o asignarles una categoría incorrecta. Una salida sin detecciones no demuestra ausencia de productos y no se interpreta como stock cero. Este comando no compara ni modifica inventario.
+
+Referencia del modelo: [documentación oficial de YOLO26](https://docs.ultralytics.com/models/yolo26/).
 
 ## Ejecutar la visualización
 

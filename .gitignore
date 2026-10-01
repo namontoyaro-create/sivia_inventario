@@ -17,3 +17,11 @@ htmlcov/
 
 # Configuración local de Poetry
 poetry.toml
+
+# Configuración local generada por Ultralytics
+Ultralytics/
+
+# Modelos descargados y resultados de pruebas de visión
+modelos/*.pt
+resultados/
+runs/

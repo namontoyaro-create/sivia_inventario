@@ -157,6 +157,8 @@ poetry run python -m sivia_inventario.dataset --exportar --salida datos/dataset_
 
 La exportación se detiene si encuentra una propuesta automática, una imagen duplicada, una caja inválida o una fuga entre entrenamiento y validación.
 
+El primer piloto revisado se documenta en [`datos/anotaciones/INFORME_PILOTO.md`](datos/anotaciones/INFORME_PILOTO.md). Sus pesos se guardan localmente dentro de `modelos/` y no se suben a GitHub, ya que se pueden regenerar desde las anotaciones.
+
 ## Interfaz local
 
 La interfaz permite elegir una imagen y revisar el resultado de un modelo local:

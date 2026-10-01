@@ -1,7 +1,7 @@
 {
   "version": 1,
   "experimental": true,
-  "descripcion": "Incluye propuestas automáticas de cajas para las imágenes nuevas. Las propuestas requieren revisión visual antes del entrenamiento definitivo.",
+  "descripcion": "Dataset piloto revisado visualmente de forma conservadora. Solo conserva ejemplos con una unidad claramente delimitada; las escenas con múltiples unidades sin cajas individuales quedan excluidas.",
   "clases": [
     "bolsa_clavos",
     "caja_clavos",
@@ -546,7 +546,7 @@
       "alto": 1895,
       "origen": "aportada_por_usuario",
       "procedencia_documentada": false,
-      "estado": "propuesta_automatica",
+      "estado": "revisada_asistente",
       "split": "train",
       "grupo": "bolsa_clavos_bolsa-clavos-04",
       "objetos": [
@@ -568,7 +568,7 @@
       "alto": 1254,
       "origen": "aportada_por_usuario",
       "procedencia_documentada": false,
-      "estado": "propuesta_automatica",
+      "estado": "revisada_asistente",
       "split": "train",
       "grupo": "bolsa_clavos_bolsa-clavos-4",
       "objetos": [
@@ -590,7 +590,7 @@
       "alto": 1000,
       "origen": "aportada_por_usuario",
       "procedencia_documentada": false,
-      "estado": "propuesta_automatica",
+      "estado": "revisada_asistente",
       "split": "val",
       "grupo": "bolsa_clavos_bolsa_clavos_05",
       "objetos": [
@@ -612,7 +612,7 @@
       "alto": 1000,
       "origen": "aportada_por_usuario",
       "procedencia_documentada": false,
-      "estado": "propuesta_automatica",
+      "estado": "revisada_asistente",
       "split": "train",
       "grupo": "bolsa_clavos_bolsa_clavos_06",
       "objetos": [
@@ -634,7 +634,7 @@
       "alto": 447,
       "origen": "aportada_por_usuario",
       "procedencia_documentada": false,
-      "estado": "propuesta_automatica",
+      "estado": "revisada_asistente",
       "split": "train",
       "grupo": "bolsa_clavos_bolsa_clavos_07",
       "objetos": [
@@ -656,7 +656,7 @@
       "alto": 1200,
       "origen": "aportada_por_usuario",
       "procedencia_documentada": false,
-      "estado": "propuesta_automatica",
+      "estado": "revisada_asistente",
       "split": "train",
       "grupo": "bolsa_clavos_bolsa_clavos_08",
       "objetos": [
@@ -678,7 +678,7 @@
       "alto": 1500,
       "origen": "aportada_por_usuario",
       "procedencia_documentada": false,
-      "estado": "propuesta_automatica",
+      "estado": "revisada_asistente",
       "split": "train",
       "grupo": "bolsa_clavos_bolsa_clavos_09",
       "objetos": [
@@ -700,7 +700,7 @@
       "alto": 1300,
       "origen": "aportada_por_usuario",
       "procedencia_documentada": false,
-      "estado": "propuesta_automatica",
+      "estado": "revisada_asistente",
       "split": "val",
       "grupo": "bolsa_clavos_bolsa_clavos_10",
       "objetos": [
@@ -722,7 +722,7 @@
       "alto": 1080,
       "origen": "aportada_por_usuario",
       "procedencia_documentada": false,
-      "estado": "propuesta_automatica",
+      "estado": "revisada_asistente",
       "split": "val",
       "grupo": "bolsa_clavos_bolsa_clavos_10",
       "objetos": [
@@ -744,7 +744,7 @@
       "alto": 500,
       "origen": "aportada_por_usuario",
       "procedencia_documentada": false,
-      "estado": "propuesta_automatica",
+      "estado": "revisada_asistente",
       "split": "train",
       "grupo": "caja_clavos_caja_clavos_04",
       "objetos": [
@@ -766,7 +766,7 @@
       "alto": 1080,
       "origen": "aportada_por_usuario",
       "procedencia_documentada": false,
-      "estado": "propuesta_automatica",
+      "estado": "revisada_asistente",
       "split": "val",
       "grupo": "caja_clavos_caja_clavos_05",
       "objetos": [
@@ -788,7 +788,7 @@
       "alto": 640,
       "origen": "aportada_por_usuario",
       "procedencia_documentada": false,
-      "estado": "propuesta_automatica",
+      "estado": "excluida",
       "split": "train",
       "grupo": "caja_clavos_caja_clavos_06",
       "objetos": [
@@ -801,7 +801,8 @@
             1
           ]
         }
-      ]
+      ],
+      "motivo": "Composición de varias cajas; una sola caja no representa las unidades visibles."
     },
     {
       "archivo": "datos/imagenes/caja_clavos/caja_clavos_07.jpg",
@@ -810,7 +811,7 @@
       "alto": 480,
       "origen": "aportada_por_usuario",
       "procedencia_documentada": false,
-      "estado": "propuesta_automatica",
+      "estado": "revisada_asistente",
       "split": "train",
       "grupo": "caja_clavos_caja_clavos_07",
       "objetos": [
@@ -832,7 +833,7 @@
       "alto": 321,
       "origen": "aportada_por_usuario",
       "procedencia_documentada": false,
-      "estado": "propuesta_automatica",
+      "estado": "revisada_asistente",
       "split": "train",
       "grupo": "caja_clavos_caja_clavos_08",
       "objetos": [
@@ -854,7 +855,7 @@
       "alto": 800,
       "origen": "aportada_por_usuario",
       "procedencia_documentada": false,
-      "estado": "propuesta_automatica",
+      "estado": "excluida",
       "split": "train",
       "grupo": "caja_clavos_caja_clavos_09",
       "objetos": [
@@ -867,7 +868,8 @@
             0.5725
           ]
         }
-      ]
+      ],
+      "motivo": "Fotografía de estantería con varias cajas pequeñas y ocluidas."
     },
     {
       "archivo": "datos/imagenes/caja_clavos/caja_clavos_10.jpg",
@@ -876,7 +878,7 @@
       "alto": 447,
       "origen": "aportada_por_usuario",
       "procedencia_documentada": false,
-      "estado": "propuesta_automatica",
+      "estado": "revisada_asistente",
       "split": "val",
       "grupo": "caja_clavos_caja_clavos_10",
       "objetos": [
@@ -898,7 +900,7 @@
       "alto": 554,
       "origen": "aportada_por_usuario",
       "procedencia_documentada": false,
-      "estado": "propuesta_automatica",
+      "estado": "excluida",
       "split": "train",
       "grupo": "candado_candado_04",
       "objetos": [
@@ -911,7 +913,8 @@
             0.43501805054151627
           ]
         }
-      ]
+      ],
+      "motivo": "Muestra varios candados; las cajas propuestas no cubren todas las unidades."
     },
     {
       "archivo": "datos/imagenes/candado/candado_05.jpg",
@@ -920,7 +923,7 @@
       "alto": 447,
       "origen": "aportada_por_usuario",
       "procedencia_documentada": false,
-      "estado": "propuesta_automatica",
+      "estado": "revisada_asistente",
       "split": "val",
       "grupo": "candado_candado_05",
       "objetos": [
@@ -942,7 +945,7 @@
       "alto": 480,
       "origen": "aportada_por_usuario",
       "procedencia_documentada": false,
-      "estado": "propuesta_automatica",
+      "estado": "revisada_asistente",
       "split": "train",
       "grupo": "candado_candado_06",
       "objetos": [
@@ -964,7 +967,7 @@
       "alto": 554,
       "origen": "aportada_por_usuario",
       "procedencia_documentada": false,
-      "estado": "propuesta_automatica",
+      "estado": "revisada_asistente",
       "split": "train",
       "grupo": "candado_candado_07",
       "objetos": [
@@ -986,7 +989,7 @@
       "alto": 225,
       "origen": "aportada_por_usuario",
       "procedencia_documentada": false,
-      "estado": "propuesta_automatica",
+      "estado": "revisada_asistente",
       "split": "train",
       "grupo": "candado_candado_08",
       "objetos": [
@@ -1008,7 +1011,7 @@
       "alto": 398,
       "origen": "aportada_por_usuario",
       "procedencia_documentada": false,
-      "estado": "propuesta_automatica",
+      "estado": "revisada_asistente",
       "split": "train",
       "grupo": "candado_candado_09",
       "objetos": [
@@ -1030,7 +1033,7 @@
       "alto": 447,
       "origen": "aportada_por_usuario",
       "procedencia_documentada": false,
-      "estado": "propuesta_automatica",
+      "estado": "revisada_asistente",
       "split": "val",
       "grupo": "candado_candado_10",
       "objetos": [
@@ -1052,7 +1055,7 @@
       "alto": 500,
       "origen": "aportada_por_usuario",
       "procedencia_documentada": false,
-      "estado": "propuesta_automatica",
+      "estado": "revisada_asistente",
       "split": "train",
       "grupo": "cerradura_sobreponer_cerradura_sobreponer_04",
       "objetos": [
@@ -1074,7 +1077,7 @@
       "alto": 554,
       "origen": "aportada_por_usuario",
       "procedencia_documentada": false,
-      "estado": "propuesta_automatica",
+      "estado": "revisada_asistente",
       "split": "val",
       "grupo": "cerradura_sobreponer_cerradura_sobreponer_05",
       "objetos": [
@@ -1096,7 +1099,7 @@
       "alto": 465,
       "origen": "aportada_por_usuario",
       "procedencia_documentada": false,
-      "estado": "propuesta_automatica",
+      "estado": "revisada_asistente",
       "split": "train",
       "grupo": "cerradura_sobreponer_cerradura_sobreponer_06",
       "objetos": [
@@ -1118,7 +1121,7 @@
       "alto": 700,
       "origen": "aportada_por_usuario",
       "procedencia_documentada": false,
-      "estado": "propuesta_automatica",
+      "estado": "revisada_asistente",
       "split": "train",
       "grupo": "cerradura_sobreponer_cerradura_sobreponer_07",
       "objetos": [
@@ -1140,7 +1143,7 @@
       "alto": 800,
       "origen": "aportada_por_usuario",
       "procedencia_documentada": false,
-      "estado": "propuesta_automatica",
+      "estado": "revisada_asistente",
       "split": "train",
       "grupo": "cerradura_sobreponer_cerradura_sobreponer_08",
       "objetos": [
@@ -1162,7 +1165,7 @@
       "alto": 554,
       "origen": "aportada_por_usuario",
       "procedencia_documentada": false,
-      "estado": "propuesta_automatica",
+      "estado": "excluida",
       "split": "train",
       "grupo": "cerradura_sobreponer_cerradura_sobreponer_09",
       "objetos": [
@@ -1175,7 +1178,8 @@
             1
           ]
         }
-      ]
+      ],
+      "motivo": "Infografía de producto; no se delimitó la cerradura física de forma fiable."
     },
     {
       "archivo": "datos/imagenes/cerradura_sobreponer/cerradura_sobreponer_10.jpg",
@@ -1184,7 +1188,7 @@
       "alto": 380,
       "origen": "aportada_por_usuario",
       "procedencia_documentada": false,
-      "estado": "propuesta_automatica",
+      "estado": "excluida",
       "split": "val",
       "grupo": "cerradura_sobreponer_cerradura_sobreponer_10",
       "objetos": [
@@ -1197,7 +1201,8 @@
             0.9210526315789473
           ]
         }
-      ]
+      ],
+      "motivo": "Herrajes de puerta, no una cerradura de sobreponer identificable."
     },
     {
       "archivo": "datos/imagenes/tuberia_pvc/tuberia_pvc_04.jpg",
@@ -1206,7 +1211,7 @@
       "alto": 1200,
       "origen": "aportada_por_usuario",
       "procedencia_documentada": false,
-      "estado": "propuesta_automatica",
+      "estado": "excluida",
       "split": "train",
       "grupo": "tuberia_pvc_tuberia_pvc_04",
       "objetos": [
@@ -1219,7 +1224,8 @@
             1
           ]
         }
-      ]
+      ],
+      "motivo": "Collage de tuberías y accesorios; no permite contar tubos individualmente."
     },
     {
       "archivo": "datos/imagenes/tuberia_pvc/tuberia_pvc_05.jpg",
@@ -1228,7 +1234,7 @@
       "alto": 708,
       "origen": "aportada_por_usuario",
       "procedencia_documentada": false,
-      "estado": "propuesta_automatica",
+      "estado": "excluida",
       "split": "train",
       "grupo": "tuberia_pvc_tuberia_pvc_05",
       "objetos": [
@@ -1241,7 +1247,8 @@
             0.9533898305084746
           ]
         }
-      ]
+      ],
+      "motivo": "Atados de muchos tubos: faltan límites individuales verificables."
     },
     {
       "archivo": "datos/imagenes/tuberia_pvc/tuberia_pvc_06.jpg",
@@ -1250,7 +1257,7 @@
       "alto": 800,
       "origen": "aportada_por_usuario",
       "procedencia_documentada": false,
-      "estado": "propuesta_automatica",
+      "estado": "excluida",
       "split": "val",
       "grupo": "tuberia_pvc_tuberia_pvc_06",
       "objetos": [
@@ -1263,7 +1270,8 @@
             0.9575
           ]
         }
-      ]
+      ],
+      "motivo": "Grupo de tubos superpuestos; el conteo individual no es fiable."
     },
     {
       "archivo": "datos/imagenes/tuberia_pvc/tuberia_pvc_07.jpg",
@@ -1272,7 +1280,7 @@
       "alto": 1104,
       "origen": "aportada_por_usuario",
       "procedencia_documentada": false,
-      "estado": "propuesta_automatica",
+      "estado": "excluida",
       "split": "train",
       "grupo": "tuberia_pvc_tuberia_pvc_07",
       "objetos": [
@@ -1285,7 +1293,8 @@
             1
           ]
         }
-      ]
+      ],
+      "motivo": "Estantería con numerosos tubos; requiere anotación especializada por unidad."
     },
     {
       "archivo": "datos/imagenes/tuberia_pvc/tuberia_pvc_08.jpg",
@@ -1294,7 +1303,7 @@
       "alto": 1024,
       "origen": "aportada_por_usuario",
       "procedencia_documentada": false,
-      "estado": "propuesta_automatica",
+      "estado": "excluida",
       "split": "train",
       "grupo": "tuberia_pvc_tuberia_pvc_08",
       "objetos": [
@@ -1307,7 +1316,8 @@
             1
           ]
         }
-      ]
+      ],
+      "motivo": "Collage de estanterías con múltiples tubos."
     },
     {
       "archivo": "datos/imagenes/tuberia_pvc/tuberia_pvc_09.jpg",
@@ -1316,7 +1326,7 @@
       "alto": 400,
       "origen": "aportada_por_usuario",
       "procedencia_documentada": false,
-      "estado": "propuesta_automatica",
+      "estado": "excluida",
       "split": "train",
       "grupo": "tuberia_pvc_tuberia_pvc_09",
       "objetos": [
@@ -1329,7 +1339,8 @@
             1
           ]
         }
-      ]
+      ],
+      "motivo": "Almacén con numerosos tubos y oclusiones."
     },
     {
       "archivo": "datos/imagenes/tuberia_pvc/tuberia_pvc_10.jpg",
@@ -1338,7 +1349,7 @@
       "alto": 391,
       "origen": "aportada_por_usuario",
       "procedencia_documentada": false,
-      "estado": "propuesta_automatica",
+      "estado": "excluida",
       "split": "train",
       "grupo": "tuberia_pvc_tuberia_pvc_10",
       "objetos": [
@@ -1351,7 +1362,8 @@
             1
           ]
         }
-      ]
+      ],
+      "motivo": "Pallet con numerosos tubos; no se delimitan unidades individuales."
     },
     {
       "archivo": "datos/imagenes/bolsa_cemento/bolsa_cemento_04.jpg",
@@ -1360,7 +1372,7 @@
       "alto": 1000,
       "origen": "aportada_por_usuario",
       "procedencia_documentada": false,
-      "estado": "propuesta_automatica",
+      "estado": "revisada_asistente",
       "split": "train",
       "grupo": "bolsa_cemento_bolsa_cemento_04",
       "objetos": [
@@ -1382,7 +1394,7 @@
       "alto": 600,
       "origen": "aportada_por_usuario",
       "procedencia_documentada": false,
-      "estado": "propuesta_automatica",
+      "estado": "excluida",
       "split": "val",
       "grupo": "bolsa_cemento_bolsa_cemento_05",
       "objetos": [
@@ -1395,7 +1407,8 @@
             1
           ]
         }
-      ]
+      ],
+      "motivo": "Pila de bolsas: las unidades individuales no están delimitadas."
     },
     {
       "archivo": "datos/imagenes/bolsa_cemento/bolsa_cemento_06.jpg",
@@ -1404,7 +1417,7 @@
       "alto": 1104,
       "origen": "aportada_por_usuario",
       "procedencia_documentada": false,
-      "estado": "propuesta_automatica",
+      "estado": "excluida",
       "split": "train",
       "grupo": "bolsa_cemento_bolsa_cemento_06",
       "objetos": [
@@ -1417,7 +1430,8 @@
             1
           ]
         }
-      ]
+      ],
+      "motivo": "Pallet con múltiples bolsas: no permite verificar el conteo por unidad."
     },
     {
       "archivo": "datos/imagenes/bolsa_cemento/bolsa_cemento_07.jpg",
@@ -1426,7 +1440,7 @@
       "alto": 1152,
       "origen": "aportada_por_usuario",
       "procedencia_documentada": false,
-      "estado": "propuesta_automatica",
+      "estado": "excluida",
       "split": "train",
       "grupo": "bolsa_cemento_bolsa_cemento_07",
       "objetos": [
@@ -1439,7 +1453,8 @@
             1
           ]
         }
-      ]
+      ],
+      "motivo": "Pila de bolsas parcialmente ocluidas; no hay cajas fiables por unidad."
     },
     {
       "archivo": "datos/imagenes/bolsa_cemento/bolsa_cemento_08.jpg",
@@ -1448,7 +1463,7 @@
       "alto": 320,
       "origen": "aportada_por_usuario",
       "procedencia_documentada": false,
-      "estado": "propuesta_automatica",
+      "estado": "excluida",
       "split": "train",
       "grupo": "bolsa_cemento_bolsa_cemento_08",
       "objetos": [
@@ -1461,7 +1476,8 @@
             1
           ]
         }
-      ]
+      ],
+      "motivo": "Varias bolsas superpuestas: el conteo individual no se puede confirmar."
     },
     {
       "archivo": "datos/imagenes/bolsa_cemento/bolsa_cemento_09.jpg",
@@ -1470,7 +1486,7 @@
       "alto": 556,
       "origen": "aportada_por_usuario",
       "procedencia_documentada": false,
-      "estado": "propuesta_automatica",
+      "estado": "revisada_asistente",
       "split": "train",
       "grupo": "bolsa_cemento_bolsa_cemento_09",
       "objetos": [
@@ -1492,7 +1508,7 @@
       "alto": 500,
       "origen": "aportada_por_usuario",
       "procedencia_documentada": false,
-      "estado": "propuesta_automatica",
+      "estado": "excluida",
       "split": "val",
       "grupo": "bolsa_cemento_bolsa_cemento_10",
       "objetos": [
@@ -1505,7 +1521,8 @@
             1
           ]
         }
-      ]
+      ],
+      "motivo": "Grupo de bolsas superpuestas: faltan límites verificables por unidad."
     },
     {
       "archivo": "datos/imagenes/disco_corte/disco_corte_05.jpg",
@@ -1514,7 +1531,7 @@
       "alto": 522,
       "origen": "aportada_por_usuario",
       "procedencia_documentada": false,
-      "estado": "propuesta_automatica",
+      "estado": "excluida",
       "split": "train",
       "grupo": "disco_corte_disco_corte_05",
       "objetos": [
@@ -1527,7 +1544,8 @@
             0.9770114942528736
           ]
         }
-      ]
+      ],
+      "motivo": "Pila de discos: faltan cajas individuales para el conteo."
     },
     {
       "archivo": "datos/imagenes/disco_corte/disco_corte_06.jpg",
@@ -1536,7 +1554,7 @@
       "alto": 468,
       "origen": "aportada_por_usuario",
       "procedencia_documentada": false,
-      "estado": "propuesta_automatica",
+      "estado": "excluida",
       "split": "val",
       "grupo": "disco_corte_disco_corte_06",
       "objetos": [
@@ -1549,7 +1567,8 @@
             1
           ]
         }
-      ]
+      ],
+      "motivo": "Conjunto de discos superpuestos; no hay conteo verificable por unidad."
     },
     {
       "archivo": "datos/imagenes/disco_corte/disco_corte_07.jpg",
@@ -1558,7 +1577,7 @@
       "alto": 920,
       "origen": "aportada_por_usuario",
       "procedencia_documentada": false,
-      "estado": "propuesta_automatica",
+      "estado": "excluida",
       "split": "train",
       "grupo": "disco_corte_disco_corte_07",
       "objetos": [
@@ -1571,7 +1590,8 @@
             1
           ]
         }
-      ]
+      ],
+      "motivo": "Catálogo con varios discos diferentes; no se anotaron todas las unidades."
     },
     {
       "archivo": "datos/imagenes/disco_corte/disco_corte_08.jpg",
@@ -1580,7 +1600,7 @@
       "alto": 1440,
       "origen": "aportada_por_usuario",
       "procedencia_documentada": false,
-      "estado": "propuesta_automatica",
+      "estado": "excluida",
       "split": "train",
       "grupo": "disco_corte_disco_corte_08",
       "objetos": [
@@ -1593,7 +1613,8 @@
             0.7159722222222222
           ]
         }
-      ]
+      ],
+      "motivo": "Infografía con múltiples discos; no es una escena de conteo anotable."
     },
     {
       "archivo": "datos/imagenes/disco_corte/disco_corte_09.jpg",
@@ -1602,7 +1623,7 @@
       "alto": 1350,
       "origen": "aportada_por_usuario",
       "procedencia_documentada": false,
-      "estado": "propuesta_automatica",
+      "estado": "revisada_asistente",
       "split": "train",
       "grupo": "disco_corte_disco_corte_09",
       "objetos": [
@@ -1624,7 +1645,7 @@
       "alto": 420,
       "origen": "aportada_por_usuario",
       "procedencia_documentada": false,
-      "estado": "propuesta_automatica",
+      "estado": "excluida",
       "split": "train",
       "grupo": "disco_corte_disco_corte_10",
       "objetos": [
@@ -1637,7 +1658,8 @@
             0.9714285714285714
           ]
         }
-      ]
+      ],
+      "motivo": "Dos columnas de varios discos; no están delimitados individualmente."
     },
     {
       "archivo": "datos/imagenes/caja_discos_corte/caja_discos_corte_04.jpg",
@@ -1646,7 +1668,7 @@
       "alto": 520,
       "origen": "aportada_por_usuario",
       "procedencia_documentada": false,
-      "estado": "propuesta_automatica",
+      "estado": "revisada_asistente",
       "split": "train",
       "grupo": "caja_discos_corte_caja_discos_corte_04",
       "objetos": [
@@ -1668,7 +1690,7 @@
       "alto": 600,
       "origen": "aportada_por_usuario",
       "procedencia_documentada": false,
-      "estado": "propuesta_automatica",
+      "estado": "revisada_asistente",
       "split": "val",
       "grupo": "caja_discos_corte_caja_discos_corte_05",
       "objetos": [
@@ -1690,7 +1712,7 @@
       "alto": 970,
       "origen": "aportada_por_usuario",
       "procedencia_documentada": false,
-      "estado": "propuesta_automatica",
+      "estado": "excluida",
       "split": "train",
       "grupo": "caja_discos_corte_caja_discos_corte_06",
       "objetos": [
@@ -1703,7 +1725,8 @@
             0.5639175257731959
           ]
         }
-      ]
+      ],
+      "motivo": "Maletín y discos sueltos: la presentación caja de discos es ambigua."
     },
     {
       "archivo": "datos/imagenes/caja_discos_corte/caja_discos_corte_07.jpg",
@@ -1712,7 +1735,7 @@
       "alto": 682,
       "origen": "aportada_por_usuario",
       "procedencia_documentada": false,
-      "estado": "propuesta_automatica",
+      "estado": "revisada_asistente",
       "split": "train",
       "grupo": "caja_discos_corte_caja_discos_corte_07",
       "objetos": [
@@ -1757,7 +1780,7 @@
       "alto": 1280,
       "origen": "aportada_por_usuario",
       "procedencia_documentada": false,
-      "estado": "propuesta_automatica",
+      "estado": "revisada_asistente",
       "split": "train",
       "grupo": "caja_discos_corte_caja_discos_corte_09",
       "objetos": [
@@ -1779,7 +1802,7 @@
       "alto": 1200,
       "origen": "aportada_por_usuario",
       "procedencia_documentada": false,
-      "estado": "propuesta_automatica",
+      "estado": "revisada_asistente",
       "split": "val",
       "grupo": "caja_discos_corte_caja_discos_corte_10",
       "objetos": [
@@ -1801,7 +1824,7 @@
       "alto": 1024,
       "origen": "aportada_por_usuario",
       "procedencia_documentada": false,
-      "estado": "propuesta_automatica",
+      "estado": "excluida",
       "split": "train",
       "grupo": "caja_discos_corte_caja_discos_corte_11",
       "objetos": [
@@ -1814,7 +1837,8 @@
             0.822265625
           ]
         }
-      ]
+      ],
+      "motivo": "Varias presentaciones de cajas en una composición; no se anotaron por unidad."
     }
   ]
 }

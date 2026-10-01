@@ -42,6 +42,7 @@ El modo libre no dependerá del catálogo y sus resultados no modificarán autom
 | `tuberia_pvc` | Cada tubo visible |
 | `bolsa_cemento` | Cada bolsa visible |
 | `disco_corte` | Cada disco visible |
+| `caja_discos_corte` | Cada caja visible |
 
 No se cuentan los clavos contenidos dentro de bolsas o cajas. El sistema no inferirá unidades ocultas.
 
@@ -133,6 +134,40 @@ El comando cuenta las clases devueltas por el modelo y guarda una copia con las 
 YOLO26n preentrenado utiliza las 80 clases generales de COCO, no las siete clases de ferretería. Puede no detectar la bolsa o la caja de clavos, o asignarles una categoría incorrecta. Una salida sin detecciones no demuestra ausencia de productos y no se interpreta como stock cero. Este comando no compara ni modifica inventario.
 
 Referencia del modelo: [documentación oficial de YOLO26](https://docs.ultralytics.com/models/yolo26/).
+
+## Dataset de ferretería
+
+Las fotos originales se conservan en `datos/imagenes/`, organizadas por clase. El manifiesto `datos/anotaciones/ferreteria.json` registra sus dimensiones, huellas SHA-256, cajas y particiones.
+
+Para añadir propuestas de anotación para nuevas imágenes y generar una galería de revisión:
+
+```bash
+poetry run python -m sivia_inventario.dataset --proponer --revision
+```
+
+La galería se crea en `resultados/revision_anotaciones/index.html`. Las cajas con estado `propuesta_automatica` son aproximaciones y quedan bloqueadas para entrenamiento. Una propuesta debe revisarse y corregirse antes de marcarse como `revisada_usuario`.
+
+El dataset actual sirve para probar el flujo, pero no valida conteo de inventario: contiene fotografías comerciales, no tiene un conjunto de prueba independiente y todavía incluye propuestas pendientes de revisión.
+
+Cuando todas las cajas estén revisadas, el comando de exportación genera copias para YOLO sin modificar los originales:
+
+```bash
+poetry run python -m sivia_inventario.dataset --exportar --salida datos/dataset_yolo_v2
+```
+
+La exportación se detiene si encuentra una propuesta automática, una imagen duplicada, una caja inválida o una fuga entre entrenamiento y validación.
+
+## Interfaz local
+
+La interfaz permite elegir una imagen y revisar el resultado de un modelo local:
+
+```bash
+poetry run python -m sivia_inventario.interfaz
+```
+
+El resultado incluye una imagen anotada y un informe JSON en `resultados/deteccion/`. Los modelos actuales son experimentales, por lo que SIVIA bloquea la comparación con stock aunque se seleccione un archivo JSON. No modifica existencias.
+
+La interfaz necesita que la instalación de Python incluya Tcl/Tk. Si el equipo no lo tiene, se puede usar el comando de detección descrito abajo y abrir la imagen e informe generados.
 
 ## Ejecutar la visualización
 

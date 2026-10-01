@@ -171,6 +171,18 @@ El resultado incluye una imagen anotada y un informe JSON en `resultados/detecci
 
 La interfaz necesita que la instalación de Python incluya Tcl/Tk. Si el equipo no lo tiene, se puede usar el comando de detección descrito abajo y abrir la imagen e informe generados.
 
+## Aplicación web: primera etapa
+
+SIVIA incluye una aplicación web local responsive con un dashboard inicial y una base SQLite. La primera apertura crea `datos/sivia.db`, carga los ocho productos del catálogo y usa cantidades marcadas como **simuladas**. La base local no se sube a GitHub.
+
+Para iniciarla desde la raíz del proyecto:
+
+```bash
+poetry run uvicorn sivia_inventario.web:app --reload
+```
+
+Abre `http://127.0.0.1:8000` en el navegador. Esta etapa todavía no permite editar productos, usar la cámara ni procesar una imagen; esas funciones se implementarán de forma separada. La detección nunca actualiza automáticamente el stock registrado.
+
 ## Ejecutar la visualización
 
 Desde la raíz del proyecto, con el entorno de Poetry instalado y una fotografía disponible en la ruta indicada:

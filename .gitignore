@@ -30,3 +30,6 @@ runs/
 # Copias de entrenamiento regenerables desde las anotaciones
 datos/dataset_yolo*/
 *.cache
+
+# Base de datos local de la aplicación web
+datos/sivia.db

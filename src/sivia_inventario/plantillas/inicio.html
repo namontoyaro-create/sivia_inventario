@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SIVIA · Inventario inteligente</title>
+  <link rel="stylesheet" href="/static/sivia.css">
+</head>
+<body>
+  <header class="encabezado">
+    <a class="marca" href="/">SIVIA</a>
+    <p>Sistema Inteligente de Visión Artificial para Inventarios</p>
+  </header>
+  <main>
+    <section class="hero">
+      <p class="etiqueta">Distribuidora Atencio · Datos de prueba</p>
+      <h1>Control y verificación de inventario</h1>
+      <p>Registra existencias y verifica productos visibles mediante visión artificial.</p>
+      <a class="boton" href="#proximamente">Verificar inventario</a>
+    </section>
+    <section class="tarjetas" aria-label="Resumen del inventario">
+      <article><span>Productos registrados</span><strong>{{ resumen.productos_registrados }}</strong></article>
+      <article><span>Stock registrado</span><strong>{{ resumen.stock_registrado }}</strong><small>unidades simuladas</small></article>
+      <article><span>Verificaciones guardadas</span><strong>{{ resumen.verificaciones }}</strong></article>
+      <article><span>Diferencias encontradas</span><strong>{{ resumen.diferencias }}</strong></article>
+    </section>
+    <section id="proximamente" class="panel">
+      <h2>Próximas funciones</h2>
+      <p>Inventario, cámara, carga de fotografías, sesiones de conteo, historial y alertas se incorporarán por etapas.</p>
+      <p class="aviso">El modelo actual es experimental. Ninguna detección modifica el stock automáticamente.</p>
+    </section>
+  </main>
+</body>
+</html>

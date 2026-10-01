@@ -77,6 +77,14 @@ CATALOGO: tuple[ProductoCatalogo, ...] = (
         unidad_conteo="Cada disco visible",
         clase_ia="disco_corte",
     ),
+    ProductoCatalogo(
+        id="P008",
+        producto="Discos de corte",
+        familia="Abrasivos",
+        presentacion="Caja",
+        unidad_conteo="Cada caja visible",
+        clase_ia="caja_discos_corte",
+    ),
 )
 
 

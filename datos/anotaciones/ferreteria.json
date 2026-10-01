@@ -1,0 +1,1820 @@
+{
+  "version": 1,
+  "experimental": true,
+  "descripcion": "Incluye propuestas automáticas de cajas para las imágenes nuevas. Las propuestas requieren revisión visual antes del entrenamiento definitivo.",
+  "clases": [
+    "bolsa_clavos",
+    "caja_clavos",
+    "candado",
+    "cerradura_sobreponer",
+    "tuberia_pvc",
+    "bolsa_cemento",
+    "disco_corte",
+    "caja_discos_corte"
+  ],
+  "imagenes": [
+    {
+      "archivo": "datos/imagenes/bolsa_cemento/bolsa_cemento_01.jpg",
+      "sha256": "2f949315432e5a84cd86a75ef646eaa4b0670c60e1705e8e7be79e50ff3189f2",
+      "ancho": 413,
+      "alto": 496,
+      "origen": "aportada_por_usuario",
+      "procedencia_documentada": false,
+      "estado": "revisada_asistente",
+      "split": "train",
+      "grupo": "cemento_sol_frente",
+      "objetos": [
+        {
+          "clase": "bolsa_cemento",
+          "xyxy": [
+            0.14,
+            0.1,
+            0.88,
+            0.945
+          ]
+        }
+      ]
+    },
+    {
+      "archivo": "datos/imagenes/bolsa_cemento/bolsa_cemento_02.jpg",
+      "sha256": "20babd20a608e743dd1f1d1dc9937fd66cc1731fdcbf6666e94c7d2a5dd2a5cd",
+      "ancho": 800,
+      "alto": 800,
+      "origen": "aportada_por_usuario",
+      "procedencia_documentada": false,
+      "estado": "revisada_asistente",
+      "split": "train",
+      "grupo": "cemento_andino",
+      "objetos": [
+        {
+          "clase": "bolsa_cemento",
+          "xyxy": [
+            0.2,
+            0.07,
+            0.81,
+            0.92
+          ]
+        }
+      ]
+    },
+    {
+      "archivo": "datos/imagenes/bolsa_cemento/bolsa_cemento_03.jpg",
+      "sha256": "f71ed7bfa22db86084693b243d445bc56874c7a0754f0f3922f7e426f7424358",
+      "ancho": 500,
+      "alto": 500,
+      "origen": "aportada_por_usuario",
+      "procedencia_documentada": false,
+      "estado": "revisada_asistente",
+      "split": "val",
+      "grupo": "cemento_sol_exterior",
+      "objetos": [
+        {
+          "clase": "bolsa_cemento",
+          "xyxy": [
+            0.24,
+            0.1,
+            0.76,
+            0.865
+          ]
+        }
+      ]
+    },
+    {
+      "archivo": "datos/imagenes/bolsa_clavos/bolsa_clavos_01.jpg",
+      "sha256": "8d19491c23f25c6586b057fbbc8c5d37096e671a844703ab039608650b3ad23e",
+      "ancho": 1500,
+      "alto": 1500,
+      "origen": "aportada_por_usuario",
+      "procedencia_documentada": false,
+      "estado": "revisada_asistente",
+      "split": "train",
+      "grupo": "clavos_prodac",
+      "objetos": [
+        {
+          "clase": "bolsa_clavos",
+          "xyxy": [
+            0.06,
+            0.03,
+            0.97,
+            0.97
+          ]
+        }
+      ]
+    },
+    {
+      "archivo": "datos/imagenes/bolsa_clavos/bolsa_clavos_02.jpg",
+      "sha256": "aa4b77b3393aaf990664a161d9397ed3c6bdaee920a72c087dcc225c5c16a2d5",
+      "ancho": 624,
+      "alto": 624,
+      "origen": "aportada_por_usuario",
+      "procedencia_documentada": false,
+      "estado": "excluida",
+      "motivo": "Composición de dos vistas de empaque; falta confirmar si son unidades distintas.",
+      "objetos": []
+    },
+    {
+      "archivo": "datos/imagenes/bolsa_clavos/bolsa_clavos_03.jpg",
+      "sha256": "3729ed7de6dbaa40cd50bf3b5d6d356ee204c1874bb9fb4631f499577c2bc9b1",
+      "ancho": 1800,
+      "alto": 1800,
+      "origen": "aportada_por_usuario",
+      "procedencia_documentada": false,
+      "estado": "revisada_asistente",
+      "split": "val",
+      "grupo": "clavos_fierro",
+      "objetos": [
+        {
+          "clase": "bolsa_clavos",
+          "xyxy": [
+            0.18,
+            0.08,
+            0.84,
+            0.93
+          ]
+        }
+      ]
+    },
+    {
+      "archivo": "datos/imagenes/caja_clavos/caja_clavos_01.jpg",
+      "sha256": "d43279a2c474e3112063e7947295fd9acded7b406d77dcb3caff303ad296f35e",
+      "ancho": 1000,
+      "alto": 1000,
+      "origen": "aportada_por_usuario",
+      "procedencia_documentada": false,
+      "estado": "revisada_asistente",
+      "split": "train",
+      "grupo": "caja_prodac",
+      "objetos": [
+        {
+          "clase": "caja_clavos",
+          "xyxy": [
+            0.16,
+            0.065,
+            0.82,
+            0.92
+          ]
+        }
+      ]
+    },
+    {
+      "archivo": "datos/imagenes/caja_clavos/caja_clavos_02.jpg",
+      "sha256": "2eae3c2d250c7651e0c1e8b06f9530c65ec70a71c9d86102fc9e5a92fce71f18",
+      "ancho": 1500,
+      "alto": 1500,
+      "origen": "aportada_por_usuario",
+      "procedencia_documentada": false,
+      "estado": "revisada_asistente",
+      "split": "train",
+      "grupo": "caja_arequipa",
+      "objetos": [
+        {
+          "clase": "caja_clavos",
+          "xyxy": [
+            0.1,
+            0.19,
+            0.88,
+            0.84
+          ]
+        }
+      ]
+    },
+    {
+      "archivo": "datos/imagenes/caja_clavos/caja_clavos_03.jpg",
+      "sha256": "5a28f09f06a1f5719d971b97cee4952ca219c0323f9a5fa6665f95e4820ac03a",
+      "ancho": 500,
+      "alto": 373,
+      "origen": "aportada_por_usuario",
+      "procedencia_documentada": false,
+      "estado": "revisada_asistente",
+      "split": "val",
+      "grupo": "caja_fierro",
+      "objetos": [
+        {
+          "clase": "caja_clavos",
+          "xyxy": [
+            0.045,
+            0.04,
+            0.765,
+            0.85
+          ]
+        }
+      ]
+    },
+    {
+      "archivo": "datos/imagenes/caja_discos_corte/caja_discos_corte_01.jpg",
+      "sha256": "ec346f8e3fb6f250160af991bb9f7dc785cd9c228e275e49b57fa2cf839194af",
+      "ancho": 720,
+      "alto": 960,
+      "origen": "aportada_por_usuario",
+      "procedencia_documentada": false,
+      "estado": "revisada_asistente",
+      "split": "train",
+      "grupo": "caja_dewalt",
+      "objetos": [
+        {
+          "clase": "caja_discos_corte",
+          "xyxy": [
+            0.01,
+            0.296,
+            0.625,
+            0.714
+          ]
+        },
+        {
+          "clase": "disco_corte",
+          "xyxy": [
+            0.572,
+            0.333,
+            0.994,
+            0.701
+          ]
+        }
+      ]
+    },
+    {
+      "archivo": "datos/imagenes/caja_discos_corte/caja_discos_corte_02.jpg",
+      "sha256": "1692dbd669c2cd9fee46c238b71685e88bc865746e160c8fc560a9407cd6beda",
+      "ancho": 1004,
+      "alto": 1113,
+      "origen": "aportada_por_usuario",
+      "procedencia_documentada": false,
+      "estado": "revisada_asistente",
+      "split": "train",
+      "grupo": "caja_schmith",
+      "objetos": [
+        {
+          "clase": "caja_discos_corte",
+          "xyxy": [
+            0.08,
+            0.11,
+            0.94,
+            0.97
+          ]
+        }
+      ]
+    },
+    {
+      "archivo": "datos/imagenes/caja_discos_corte/caja_discos_corte_03.jpg",
+      "sha256": "5106dfd61647e46e8c97940c6aff8747e5f1f776da42c64a85ab7c89e6be3f58",
+      "ancho": 470,
+      "alto": 470,
+      "origen": "aportada_por_usuario",
+      "procedencia_documentada": false,
+      "estado": "revisada_asistente",
+      "split": "val",
+      "grupo": "caja_bosch",
+      "objetos": [
+        {
+          "clase": "caja_discos_corte",
+          "xyxy": [
+            0.005,
+            0.085,
+            0.995,
+            0.89
+          ]
+        }
+      ]
+    },
+    {
+      "archivo": "datos/imagenes/candado/candado_01.jpg",
+      "sha256": "7e12aecee7f0a652a44b5c28e9957875732f6d53a910375ae2139793dc05b712",
+      "ancho": 2000,
+      "alto": 2000,
+      "origen": "aportada_por_usuario",
+      "procedencia_documentada": false,
+      "estado": "revisada_asistente",
+      "split": "train",
+      "grupo": "candado_forte_dorado",
+      "objetos": [
+        {
+          "clase": "candado",
+          "xyxy": [
+            0.11,
+            0.16,
+            0.46,
+            0.72
+          ]
+        }
+      ]
+    },
+    {
+      "archivo": "datos/imagenes/candado/candado_02.jpg",
+      "sha256": "e956e2e7d7d75ed9cf6f9c0febce87f67b150e465d772264dd15d97ec0dd00b5",
+      "ancho": 800,
+      "alto": 800,
+      "origen": "aportada_por_usuario",
+      "procedencia_documentada": false,
+      "estado": "revisada_asistente",
+      "split": "train",
+      "grupo": "candado_forte_negro",
+      "objetos": [
+        {
+          "clase": "candado",
+          "xyxy": [
+            0.38,
+            0.24,
+            0.75,
+            0.81
+          ]
+        }
+      ]
+    },
+    {
+      "archivo": "datos/imagenes/candado/candado_03.jpg",
+      "sha256": "0b1d1401c130ae9a9e542bb6a70b75aba04970ca6c937c7efb1c7018ac1ec4e0",
+      "ancho": 1000,
+      "alto": 1000,
+      "origen": "aportada_por_usuario",
+      "procedencia_documentada": false,
+      "estado": "revisada_asistente",
+      "split": "val",
+      "grupo": "candado_travex",
+      "objetos": [
+        {
+          "clase": "candado",
+          "xyxy": [
+            0.13,
+            0.12,
+            0.43,
+            0.885
+          ]
+        }
+      ]
+    },
+    {
+      "archivo": "datos/imagenes/cerradura_sobreponer/cerradura_sobreponer_01.jpg",
+      "sha256": "847ecb7536e0a2dbb70dc5e06acd530f1ce1153af6929876182e713bd17aa3e1",
+      "ancho": 1500,
+      "alto": 1500,
+      "origen": "aportada_por_usuario",
+      "procedencia_documentada": false,
+      "estado": "revisada_asistente",
+      "split": "train",
+      "grupo": "cerradura_dorada",
+      "objetos": [
+        {
+          "clase": "cerradura_sobreponer",
+          "xyxy": [
+            0.045,
+            0.175,
+            0.835,
+            0.87
+          ]
+        }
+      ]
+    },
+    {
+      "archivo": "datos/imagenes/cerradura_sobreponer/cerradura_sobreponer_02.jpg",
+      "sha256": "cf67945c8718ed52f7c8b0e9afea7208fa0e8a9bfd50df5c6c80c4e6aff29599",
+      "ancho": 800,
+      "alto": 800,
+      "origen": "aportada_por_usuario",
+      "procedencia_documentada": false,
+      "estado": "revisada_asistente",
+      "split": "train",
+      "grupo": "cerradura_forte",
+      "objetos": [
+        {
+          "clase": "cerradura_sobreponer",
+          "xyxy": [
+            0.3,
+            0.4,
+            0.75,
+            0.82
+          ]
+        }
+      ]
+    },
+    {
+      "archivo": "datos/imagenes/cerradura_sobreponer/cerradura_sobreponer_03.jpg",
+      "sha256": "757e313169f2d593174c2e48410b627a455c842b8a2fd51b3fe9bfdd4b4674e4",
+      "ancho": 1500,
+      "alto": 1500,
+      "origen": "aportada_por_usuario",
+      "procedencia_documentada": false,
+      "estado": "revisada_asistente",
+      "split": "val",
+      "grupo": "cerradura_medidas",
+      "objetos": [
+        {
+          "clase": "cerradura_sobreponer",
+          "xyxy": [
+            0.18,
+            0.355,
+            0.53,
+            0.675
+          ]
+        }
+      ]
+    },
+    {
+      "archivo": "datos/imagenes/disco_corte/disco_corte_01.jpg",
+      "sha256": "6d7dfadfa91945de3b4a5c942da03e38f343d9bdc777c7846eaab082457bbc85",
+      "ancho": 1160,
+      "alto": 1160,
+      "origen": "aportada_por_usuario",
+      "procedencia_documentada": false,
+      "estado": "revisada_asistente",
+      "split": "train",
+      "grupo": "disco_dewalt",
+      "objetos": [
+        {
+          "clase": "disco_corte",
+          "xyxy": [
+            0.005,
+            0.005,
+            0.995,
+            0.995
+          ]
+        }
+      ]
+    },
+    {
+      "archivo": "datos/imagenes/disco_corte/disco_corte_02.jpg",
+      "sha256": "668d7694766b41005d358b3cf9f8a110bee2fee6bde72cc5ae3d2bee9d3d17ac",
+      "ancho": 500,
+      "alto": 500,
+      "origen": "aportada_por_usuario",
+      "procedencia_documentada": false,
+      "estado": "revisada_asistente",
+      "split": "train",
+      "grupo": "disco_vonder",
+      "objetos": [
+        {
+          "clase": "disco_corte",
+          "xyxy": [
+            0.01,
+            0.01,
+            0.99,
+            0.99
+          ]
+        }
+      ]
+    },
+    {
+      "archivo": "datos/imagenes/disco_corte/disco_corte_03.jpg",
+      "sha256": "ae1116c8f3ff58093ca10035b5b9232a4a025a40976c85f7b2205b26ef527128",
+      "ancho": 700,
+      "alto": 700,
+      "origen": "aportada_por_usuario",
+      "procedencia_documentada": false,
+      "estado": "revisada_asistente",
+      "split": "val",
+      "grupo": "disco_black_decker",
+      "objetos": [
+        {
+          "clase": "disco_corte",
+          "xyxy": [
+            0.07,
+            0.08,
+            0.94,
+            0.94
+          ]
+        }
+      ]
+    },
+    {
+      "archivo": "datos/imagenes/disco_corte/disco_corte_04.jpg",
+      "sha256": "c4021c4389ff0dad1c0e5fdda5cea183ea99abe4936c77db549274470a39705a",
+      "ancho": 500,
+      "alto": 500,
+      "origen": "aportada_por_usuario",
+      "procedencia_documentada": false,
+      "estado": "excluida",
+      "motivo": "Pila de discos parcialmente oculta; las unidades no se delimitan con fiabilidad.",
+      "objetos": []
+    },
+    {
+      "archivo": "datos/imagenes/tuberia_pvc/tuberia_pvc_01.jpg",
+      "sha256": "47011aee108d3298edbeeb987f04e57631d77393a3524541ba2050b37ec7ca86",
+      "ancho": 1500,
+      "alto": 1500,
+      "origen": "aportada_por_usuario",
+      "procedencia_documentada": false,
+      "estado": "revisada_asistente",
+      "split": "train",
+      "grupo": "tubo_catalogo_similar",
+      "objetos": [
+        {
+          "clase": "tuberia_pvc",
+          "xyxy": [
+            0.03,
+            0.25,
+            0.97,
+            0.78
+          ]
+        }
+      ]
+    },
+    {
+      "archivo": "datos/imagenes/tuberia_pvc/tuberia_pvc_02.jpg",
+      "sha256": "b7e1b054f97e595cd846956e258566bc9e6ce71285060e521718b4edf170634f",
+      "ancho": 1000,
+      "alto": 1000,
+      "origen": "aportada_por_usuario",
+      "procedencia_documentada": false,
+      "estado": "excluida",
+      "motivo": "Almacén con numerosos extremos pequeños y ocluidos; requiere anotación especializada por unidad.",
+      "objetos": []
+    },
+    {
+      "archivo": "datos/imagenes/tuberia_pvc/tuberia_pvc_03.jpg",
+      "sha256": "dbac193649b9545f28de4532f552206ba63303b147fd881cd5815aa46017cf3d",
+      "ancho": 1500,
+      "alto": 1500,
+      "origen": "aportada_por_usuario",
+      "procedencia_documentada": false,
+      "estado": "revisada_asistente",
+      "split": "train",
+      "grupo": "tubo_catalogo_similar",
+      "objetos": [
+        {
+          "clase": "tuberia_pvc",
+          "xyxy": [
+            0.03,
+            0.255,
+            0.97,
+            0.82
+          ]
+        }
+      ]
+    },
+    {
+      "archivo": "datos/imagenes/bolsa_clavos/bolsa-clavos-04.jpg",
+      "sha256": "cd7b731c3622b0232f986c1e4f5b3fdea3d74ed9c305606d7a957945c6fd645d",
+      "ancho": 1418,
+      "alto": 1895,
+      "origen": "aportada_por_usuario",
+      "procedencia_documentada": false,
+      "estado": "propuesta_automatica",
+      "split": "train",
+      "grupo": "bolsa_clavos_bolsa-clavos-04",
+      "objetos": [
+        {
+          "clase": "bolsa_clavos",
+          "xyxy": [
+            0,
+            0,
+            1,
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "archivo": "datos/imagenes/bolsa_clavos/bolsa-clavos-4.png",
+      "sha256": "525f35e032632856847822cc3fe9aa31868a71bb6e9a524c01a6ca5a0eb10e66",
+      "ancho": 1254,
+      "alto": 1254,
+      "origen": "aportada_por_usuario",
+      "procedencia_documentada": false,
+      "estado": "propuesta_automatica",
+      "split": "train",
+      "grupo": "bolsa_clavos_bolsa-clavos-4",
+      "objetos": [
+        {
+          "clase": "bolsa_clavos",
+          "xyxy": [
+            0.02631578947368421,
+            0.05263157894736842,
+            0.9744816586921851,
+            0.9609250398724083
+          ]
+        }
+      ]
+    },
+    {
+      "archivo": "datos/imagenes/bolsa_clavos/bolsa_clavos_05.jpg",
+      "sha256": "a72caf28da95e146d7f2f00001761267a1197292253b627f3a44591bef406900",
+      "ancho": 523,
+      "alto": 1000,
+      "origen": "aportada_por_usuario",
+      "procedencia_documentada": false,
+      "estado": "propuesta_automatica",
+      "split": "val",
+      "grupo": "bolsa_clavos_bolsa_clavos_05",
+      "objetos": [
+        {
+          "clase": "bolsa_clavos",
+          "xyxy": [
+            0,
+            0,
+            1,
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "archivo": "datos/imagenes/bolsa_clavos/bolsa_clavos_06.webp",
+      "sha256": "96af2225abec1a43e78ec58e1a0e4d42aa510d4cab158aa121a433e4416982d2",
+      "ancho": 1000,
+      "alto": 1000,
+      "origen": "aportada_por_usuario",
+      "procedencia_documentada": false,
+      "estado": "propuesta_automatica",
+      "split": "train",
+      "grupo": "bolsa_clavos_bolsa_clavos_06",
+      "objetos": [
+        {
+          "clase": "bolsa_clavos",
+          "xyxy": [
+            0.012,
+            0.095,
+            0.988,
+            0.907
+          ]
+        }
+      ]
+    },
+    {
+      "archivo": "datos/imagenes/bolsa_clavos/bolsa_clavos_07.jpg",
+      "sha256": "fe93debb77a5a5d1171ca8a88809ddee44361ba0f6351547eb394695692bed7e",
+      "ancho": 447,
+      "alto": 447,
+      "origen": "aportada_por_usuario",
+      "procedencia_documentada": false,
+      "estado": "propuesta_automatica",
+      "split": "train",
+      "grupo": "bolsa_clavos_bolsa_clavos_07",
+      "objetos": [
+        {
+          "clase": "bolsa_clavos",
+          "xyxy": [
+            0.08501118568232663,
+            0.15659955257270694,
+            0.9194630872483222,
+            0.87248322147651
+          ]
+        }
+      ]
+    },
+    {
+      "archivo": "datos/imagenes/bolsa_clavos/bolsa_clavos_08.jpg",
+      "sha256": "470fbf559f63d3f324ed1d5bb0ab8952c766119ba89a8a8f9bcd062f530ad2bd",
+      "ancho": 1200,
+      "alto": 1200,
+      "origen": "aportada_por_usuario",
+      "procedencia_documentada": false,
+      "estado": "propuesta_automatica",
+      "split": "train",
+      "grupo": "bolsa_clavos_bolsa_clavos_08",
+      "objetos": [
+        {
+          "clase": "bolsa_clavos",
+          "xyxy": [
+            0.20666666666666667,
+            0.1,
+            0.8225,
+            0.9183333333333333
+          ]
+        }
+      ]
+    },
+    {
+      "archivo": "datos/imagenes/bolsa_clavos/bolsa_clavos_09.webp",
+      "sha256": "d9a0442a062253ae11960a66e550a678400c8b4f9ebafe14b514de590f2fc82f",
+      "ancho": 1500,
+      "alto": 1500,
+      "origen": "aportada_por_usuario",
+      "procedencia_documentada": false,
+      "estado": "propuesta_automatica",
+      "split": "train",
+      "grupo": "bolsa_clavos_bolsa_clavos_09",
+      "objetos": [
+        {
+          "clase": "bolsa_clavos",
+          "xyxy": [
+            0,
+            0.035333333333333335,
+            0.9753333333333334,
+            0.9706666666666667
+          ]
+        }
+      ]
+    },
+    {
+      "archivo": "datos/imagenes/bolsa_clavos/bolsa_clavos_10.jpg",
+      "sha256": "87c4dc1feb145df1304bbdebe552ec6ed06d69ada1dc0345bf80a2adf887a621",
+      "ancho": 1300,
+      "alto": 1300,
+      "origen": "aportada_por_usuario",
+      "procedencia_documentada": false,
+      "estado": "propuesta_automatica",
+      "split": "val",
+      "grupo": "bolsa_clavos_bolsa_clavos_10",
+      "objetos": [
+        {
+          "clase": "bolsa_clavos",
+          "xyxy": [
+            0.04461538461538461,
+            0.07846153846153846,
+            0.9569230769230769,
+            0.9230769230769231
+          ]
+        }
+      ]
+    },
+    {
+      "archivo": "datos/imagenes/bolsa_clavos/bolsa_clavos_10.png",
+      "sha256": "2f0d2d7e756bf76e55842cc8f82632952d68f17b795e957efba8225fe5b6833c",
+      "ancho": 1080,
+      "alto": 1080,
+      "origen": "aportada_por_usuario",
+      "procedencia_documentada": false,
+      "estado": "propuesta_automatica",
+      "split": "val",
+      "grupo": "bolsa_clavos_bolsa_clavos_10",
+      "objetos": [
+        {
+          "clase": "bolsa_clavos",
+          "xyxy": [
+            0.08981481481481482,
+            0.09351851851851851,
+            0.9083333333333333,
+            0.9111111111111111
+          ]
+        }
+      ]
+    },
+    {
+      "archivo": "datos/imagenes/caja_clavos/caja_clavos_04.jpg",
+      "sha256": "4f0ef8809b71fb722e3df726233b17ed426e8c3514e5081365466f40442f43ce",
+      "ancho": 500,
+      "alto": 500,
+      "origen": "aportada_por_usuario",
+      "procedencia_documentada": false,
+      "estado": "propuesta_automatica",
+      "split": "train",
+      "grupo": "caja_clavos_caja_clavos_04",
+      "objetos": [
+        {
+          "clase": "caja_clavos",
+          "xyxy": [
+            0.134,
+            0.206,
+            0.876,
+            0.78
+          ]
+        }
+      ]
+    },
+    {
+      "archivo": "datos/imagenes/caja_clavos/caja_clavos_05.jpg",
+      "sha256": "2438d8eab26690ee53c6e1af92eca6eaf20637afe42056b723862afd0ac74754",
+      "ancho": 1080,
+      "alto": 1080,
+      "origen": "aportada_por_usuario",
+      "procedencia_documentada": false,
+      "estado": "propuesta_automatica",
+      "split": "val",
+      "grupo": "caja_clavos_caja_clavos_05",
+      "objetos": [
+        {
+          "clase": "caja_clavos",
+          "xyxy": [
+            0.10277777777777777,
+            0.21666666666666667,
+            0.9287037037037037,
+            0.7842592592592592
+          ]
+        }
+      ]
+    },
+    {
+      "archivo": "datos/imagenes/caja_clavos/caja_clavos_06.jpg",
+      "sha256": "7436441588f565a25f6fcffae5b66246712b48a1c79dc8d008cc3da87fa81791",
+      "ancho": 480,
+      "alto": 640,
+      "origen": "aportada_por_usuario",
+      "procedencia_documentada": false,
+      "estado": "propuesta_automatica",
+      "split": "train",
+      "grupo": "caja_clavos_caja_clavos_06",
+      "objetos": [
+        {
+          "clase": "caja_clavos",
+          "xyxy": [
+            0,
+            0,
+            1,
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "archivo": "datos/imagenes/caja_clavos/caja_clavos_07.jpg",
+      "sha256": "a933cfd4abc1b8ea2f69ce677ff66fee2aa088dccdaae69ded93e5793d11ac48",
+      "ancho": 640,
+      "alto": 480,
+      "origen": "aportada_por_usuario",
+      "procedencia_documentada": false,
+      "estado": "propuesta_automatica",
+      "split": "train",
+      "grupo": "caja_clavos_caja_clavos_07",
+      "objetos": [
+        {
+          "clase": "caja_clavos",
+          "xyxy": [
+            0,
+            0,
+            1,
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "archivo": "datos/imagenes/caja_clavos/caja_clavos_08.jpg",
+      "sha256": "fc052b17ca0a4ac0ee3c5098a47514759a625f52880ad11e3c1ea87e8267642c",
+      "ancho": 500,
+      "alto": 321,
+      "origen": "aportada_por_usuario",
+      "procedencia_documentada": false,
+      "estado": "propuesta_automatica",
+      "split": "train",
+      "grupo": "caja_clavos_caja_clavos_08",
+      "objetos": [
+        {
+          "clase": "caja_clavos",
+          "xyxy": [
+            0.034,
+            0.037383177570093455,
+            0.968,
+            0.9719626168224299
+          ]
+        }
+      ]
+    },
+    {
+      "archivo": "datos/imagenes/caja_clavos/caja_clavos_09.jpg",
+      "sha256": "8b8d95bf659b6ffb81e95df65e2d29e7794b5eb2d827dc686467806d446f939c",
+      "ancho": 800,
+      "alto": 800,
+      "origen": "aportada_por_usuario",
+      "procedencia_documentada": false,
+      "estado": "propuesta_automatica",
+      "split": "train",
+      "grupo": "caja_clavos_caja_clavos_09",
+      "objetos": [
+        {
+          "clase": "caja_clavos",
+          "xyxy": [
+            0.105,
+            0,
+            0.895,
+            0.5725
+          ]
+        }
+      ]
+    },
+    {
+      "archivo": "datos/imagenes/caja_clavos/caja_clavos_10.jpg",
+      "sha256": "0dc06bf0f9090028fbef97f94d7476193d17467d369654b19dd193f06a6bd6c2",
+      "ancho": 447,
+      "alto": 447,
+      "origen": "aportada_por_usuario",
+      "procedencia_documentada": false,
+      "estado": "propuesta_automatica",
+      "split": "val",
+      "grupo": "caja_clavos_caja_clavos_10",
+      "objetos": [
+        {
+          "clase": "caja_clavos",
+          "xyxy": [
+            0.042505592841163314,
+            0.15659955257270694,
+            0.9574944071588367,
+            0.8501118568232662
+          ]
+        }
+      ]
+    },
+    {
+      "archivo": "datos/imagenes/candado/candado_04.jpg",
+      "sha256": "ea5052a271340d3edaf6ccc6f8e568fa7bd5719a09de1109f96d93a3a41e7ab6",
+      "ancho": 554,
+      "alto": 554,
+      "origen": "aportada_por_usuario",
+      "procedencia_documentada": false,
+      "estado": "propuesta_automatica",
+      "split": "train",
+      "grupo": "candado_candado_04",
+      "objetos": [
+        {
+          "clase": "candado",
+          "xyxy": [
+            0.296028880866426,
+            0.11552346570397112,
+            0.5090252707581228,
+            0.43501805054151627
+          ]
+        }
+      ]
+    },
+    {
+      "archivo": "datos/imagenes/candado/candado_05.jpg",
+      "sha256": "c81928041bb210a49fac3d9aca4451583d34aa37b8443ca871712cf519d92b6c",
+      "ancho": 447,
+      "alto": 447,
+      "origen": "aportada_por_usuario",
+      "procedencia_documentada": false,
+      "estado": "propuesta_automatica",
+      "split": "val",
+      "grupo": "candado_candado_05",
+      "objetos": [
+        {
+          "clase": "candado",
+          "xyxy": [
+            0.18120805369127516,
+            0.17225950782997762,
+            0.9485458612975392,
+            0.8344519015659956
+          ]
+        }
+      ]
+    },
+    {
+      "archivo": "datos/imagenes/candado/candado_06.jpg",
+      "sha256": "0c886e5400adb4983010b004ff8f348eb7a23dcce411d4dbd2aaff742f4ade03",
+      "ancho": 480,
+      "alto": 480,
+      "origen": "aportada_por_usuario",
+      "procedencia_documentada": false,
+      "estado": "propuesta_automatica",
+      "split": "train",
+      "grupo": "candado_candado_06",
+      "objetos": [
+        {
+          "clase": "candado",
+          "xyxy": [
+            0.2604166666666667,
+            0.016666666666666666,
+            0.7291666666666666,
+            0.8229166666666666
+          ]
+        }
+      ]
+    },
+    {
+      "archivo": "datos/imagenes/candado/candado_07.jpg",
+      "sha256": "b161a8f23ee0523185122f94e8e9aa67a08976bc83d8dec6b441890ebb1288e0",
+      "ancho": 554,
+      "alto": 554,
+      "origen": "aportada_por_usuario",
+      "procedencia_documentada": false,
+      "estado": "propuesta_automatica",
+      "split": "train",
+      "grupo": "candado_candado_07",
+      "objetos": [
+        {
+          "clase": "candado",
+          "xyxy": [
+            0.3303249097472924,
+            0.148014440433213,
+            0.6823104693140795,
+            0.8501805054151624
+          ]
+        }
+      ]
+    },
+    {
+      "archivo": "datos/imagenes/candado/candado_08.jpg",
+      "sha256": "139ab93bca2323ecdd19327e93ea45144bc9318cb872a1be09dcf912e5a4ef5c",
+      "ancho": 225,
+      "alto": 225,
+      "origen": "aportada_por_usuario",
+      "procedencia_documentada": false,
+      "estado": "propuesta_automatica",
+      "split": "train",
+      "grupo": "candado_candado_08",
+      "objetos": [
+        {
+          "clase": "candado",
+          "xyxy": [
+            0,
+            0,
+            1,
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "archivo": "datos/imagenes/candado/candado_09.jpg",
+      "sha256": "c4079ed84eae7d8b81d2bdd1fd7f02765e0e890fe1951d553a312cac8b51e6a3",
+      "ancho": 446,
+      "alto": 398,
+      "origen": "aportada_por_usuario",
+      "procedencia_documentada": false,
+      "estado": "propuesta_automatica",
+      "split": "train",
+      "grupo": "candado_candado_09",
+      "objetos": [
+        {
+          "clase": "candado",
+          "xyxy": [
+            0.017937219730941704,
+            0.032663316582914576,
+            0.9641255605381166,
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "archivo": "datos/imagenes/candado/candado_10.jpg",
+      "sha256": "2a07507dfec166bacc47fe4cfa1418367749a5c662f1b8780fb5b258a75d975c",
+      "ancho": 447,
+      "alto": 447,
+      "origen": "aportada_por_usuario",
+      "procedencia_documentada": false,
+      "estado": "propuesta_automatica",
+      "split": "val",
+      "grupo": "candado_candado_10",
+      "objetos": [
+        {
+          "clase": "candado",
+          "xyxy": [
+            0,
+            0,
+            1,
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "archivo": "datos/imagenes/cerradura_sobreponer/cerradura_sobreponer_04.jpg",
+      "sha256": "0ecfb6c5f76b195ce2922dba442121bee23968c5685f6c4861048ed919976b4f",
+      "ancho": 500,
+      "alto": 500,
+      "origen": "aportada_por_usuario",
+      "procedencia_documentada": false,
+      "estado": "propuesta_automatica",
+      "split": "train",
+      "grupo": "cerradura_sobreponer_cerradura_sobreponer_04",
+      "objetos": [
+        {
+          "clase": "cerradura_sobreponer",
+          "xyxy": [
+            0.064,
+            0.224,
+            0.656,
+            0.706
+          ]
+        }
+      ]
+    },
+    {
+      "archivo": "datos/imagenes/cerradura_sobreponer/cerradura_sobreponer_05.jpg",
+      "sha256": "8e0d2947ca55664eec925bf15dede94bd9d60bcb3aae7d917688ce455481d61d",
+      "ancho": 554,
+      "alto": 554,
+      "origen": "aportada_por_usuario",
+      "procedencia_documentada": false,
+      "estado": "propuesta_automatica",
+      "split": "val",
+      "grupo": "cerradura_sobreponer_cerradura_sobreponer_05",
+      "objetos": [
+        {
+          "clase": "cerradura_sobreponer",
+          "xyxy": [
+            0.0036101083032490976,
+            0.18592057761732853,
+            0.9981949458483754,
+            0.8032490974729242
+          ]
+        }
+      ]
+    },
+    {
+      "archivo": "datos/imagenes/cerradura_sobreponer/cerradura_sobreponer_06.jpg",
+      "sha256": "8d83ba151ae4aee133061052ec162520a8f8eabcba959da30ee8f8d5e2c61b83",
+      "ancho": 430,
+      "alto": 465,
+      "origen": "aportada_por_usuario",
+      "procedencia_documentada": false,
+      "estado": "propuesta_automatica",
+      "split": "train",
+      "grupo": "cerradura_sobreponer_cerradura_sobreponer_06",
+      "objetos": [
+        {
+          "clase": "cerradura_sobreponer",
+          "xyxy": [
+            0,
+            0,
+            1,
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "archivo": "datos/imagenes/cerradura_sobreponer/cerradura_sobreponer_07.jpg",
+      "sha256": "6556b8a29b6ff6d9eaa920a2c65e52433ded842914e28ce6756108a85388f10e",
+      "ancho": 700,
+      "alto": 700,
+      "origen": "aportada_por_usuario",
+      "procedencia_documentada": false,
+      "estado": "propuesta_automatica",
+      "split": "train",
+      "grupo": "cerradura_sobreponer_cerradura_sobreponer_07",
+      "objetos": [
+        {
+          "clase": "cerradura_sobreponer",
+          "xyxy": [
+            0.13285714285714287,
+            0.2342857142857143,
+            0.8685714285714285,
+            0.7714285714285715
+          ]
+        }
+      ]
+    },
+    {
+      "archivo": "datos/imagenes/cerradura_sobreponer/cerradura_sobreponer_08.jpg",
+      "sha256": "326e14cbb19031828c12d39c77ebdbff210ba4e60695cb61f6e3bbe86df00e64",
+      "ancho": 800,
+      "alto": 800,
+      "origen": "aportada_por_usuario",
+      "procedencia_documentada": false,
+      "estado": "propuesta_automatica",
+      "split": "train",
+      "grupo": "cerradura_sobreponer_cerradura_sobreponer_08",
+      "objetos": [
+        {
+          "clase": "cerradura_sobreponer",
+          "xyxy": [
+            0,
+            0,
+            1,
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "archivo": "datos/imagenes/cerradura_sobreponer/cerradura_sobreponer_09.jpg",
+      "sha256": "2b320af09bf6f983ec1e10fa7971e2b04c1174ddeeb1039d7cab2c0d4b9e798b",
+      "ancho": 554,
+      "alto": 554,
+      "origen": "aportada_por_usuario",
+      "procedencia_documentada": false,
+      "estado": "propuesta_automatica",
+      "split": "train",
+      "grupo": "cerradura_sobreponer_cerradura_sobreponer_09",
+      "objetos": [
+        {
+          "clase": "cerradura_sobreponer",
+          "xyxy": [
+            0,
+            0,
+            1,
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "archivo": "datos/imagenes/cerradura_sobreponer/cerradura_sobreponer_10.jpg",
+      "sha256": "612286af602a31fad47b3c76eda70385134816f7efc7c3f4a7d511fc16ed8504",
+      "ancho": 380,
+      "alto": 380,
+      "origen": "aportada_por_usuario",
+      "procedencia_documentada": false,
+      "estado": "propuesta_automatica",
+      "split": "val",
+      "grupo": "cerradura_sobreponer_cerradura_sobreponer_10",
+      "objetos": [
+        {
+          "clase": "cerradura_sobreponer",
+          "xyxy": [
+            0.3631578947368421,
+            0.07894736842105263,
+            0.9473684210526315,
+            0.9210526315789473
+          ]
+        }
+      ]
+    },
+    {
+      "archivo": "datos/imagenes/tuberia_pvc/tuberia_pvc_04.jpg",
+      "sha256": "21b73a32a4f084a99e0f653a75c9925eb5d39487793460996e9e699738ad2143",
+      "ancho": 1200,
+      "alto": 1200,
+      "origen": "aportada_por_usuario",
+      "procedencia_documentada": false,
+      "estado": "propuesta_automatica",
+      "split": "train",
+      "grupo": "tuberia_pvc_tuberia_pvc_04",
+      "objetos": [
+        {
+          "clase": "tuberia_pvc",
+          "xyxy": [
+            0,
+            0,
+            1,
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "archivo": "datos/imagenes/tuberia_pvc/tuberia_pvc_05.jpg",
+      "sha256": "c3bb38771d4551d9575cfe0aa5663b39f63d51db1edbdea83bba69d06b68b71f",
+      "ancho": 1200,
+      "alto": 708,
+      "origen": "aportada_por_usuario",
+      "procedencia_documentada": false,
+      "estado": "propuesta_automatica",
+      "split": "train",
+      "grupo": "tuberia_pvc_tuberia_pvc_05",
+      "objetos": [
+        {
+          "clase": "tuberia_pvc",
+          "xyxy": [
+            0.016666666666666666,
+            0.031073446327683617,
+            0.9925,
+            0.9533898305084746
+          ]
+        }
+      ]
+    },
+    {
+      "archivo": "datos/imagenes/tuberia_pvc/tuberia_pvc_06.jpg",
+      "sha256": "cea90d4a0017dadea40563f3e4320f2b256455a7b17307ecaa1aa1064cfc3c68",
+      "ancho": 800,
+      "alto": 800,
+      "origen": "aportada_por_usuario",
+      "procedencia_documentada": false,
+      "estado": "propuesta_automatica",
+      "split": "val",
+      "grupo": "tuberia_pvc_tuberia_pvc_06",
+      "objetos": [
+        {
+          "clase": "tuberia_pvc",
+          "xyxy": [
+            0,
+            0,
+            0.9925,
+            0.9575
+          ]
+        }
+      ]
+    },
+    {
+      "archivo": "datos/imagenes/tuberia_pvc/tuberia_pvc_07.jpg",
+      "sha256": "4a472b9bcf0d1bdeeeded0c4f848382cf4184063a110bccb52b587be2c23846d",
+      "ancho": 736,
+      "alto": 1104,
+      "origen": "aportada_por_usuario",
+      "procedencia_documentada": false,
+      "estado": "propuesta_automatica",
+      "split": "train",
+      "grupo": "tuberia_pvc_tuberia_pvc_07",
+      "objetos": [
+        {
+          "clase": "tuberia_pvc",
+          "xyxy": [
+            0,
+            0,
+            1,
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "archivo": "datos/imagenes/tuberia_pvc/tuberia_pvc_08.jpg",
+      "sha256": "e6c0de679472fcd2d53f1752f204f5be804d642e68736337829976ea33d251bb",
+      "ancho": 1024,
+      "alto": 1024,
+      "origen": "aportada_por_usuario",
+      "procedencia_documentada": false,
+      "estado": "propuesta_automatica",
+      "split": "train",
+      "grupo": "tuberia_pvc_tuberia_pvc_08",
+      "objetos": [
+        {
+          "clase": "tuberia_pvc",
+          "xyxy": [
+            0,
+            0,
+            1,
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "archivo": "datos/imagenes/tuberia_pvc/tuberia_pvc_09.jpg",
+      "sha256": "27f9dcdd14b86f3eb143d5738a401434cc7df7fe04015ab4416801c127f73369",
+      "ancho": 495,
+      "alto": 400,
+      "origen": "aportada_por_usuario",
+      "procedencia_documentada": false,
+      "estado": "propuesta_automatica",
+      "split": "train",
+      "grupo": "tuberia_pvc_tuberia_pvc_09",
+      "objetos": [
+        {
+          "clase": "tuberia_pvc",
+          "xyxy": [
+            0,
+            0,
+            1,
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "archivo": "datos/imagenes/tuberia_pvc/tuberia_pvc_10.jpg",
+      "sha256": "9ea0b1831790ee58404e7b3208627b71822584f63924e36dfd75e4f473b780c1",
+      "ancho": 735,
+      "alto": 391,
+      "origen": "aportada_por_usuario",
+      "procedencia_documentada": false,
+      "estado": "propuesta_automatica",
+      "split": "train",
+      "grupo": "tuberia_pvc_tuberia_pvc_10",
+      "objetos": [
+        {
+          "clase": "tuberia_pvc",
+          "xyxy": [
+            0,
+            0,
+            1,
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "archivo": "datos/imagenes/bolsa_cemento/bolsa_cemento_04.jpg",
+      "sha256": "af293859f354bf13b9fcd2ff05c4733c8a925df938a63f0adbd0fbbecf75321c",
+      "ancho": 1000,
+      "alto": 1000,
+      "origen": "aportada_por_usuario",
+      "procedencia_documentada": false,
+      "estado": "propuesta_automatica",
+      "split": "train",
+      "grupo": "bolsa_cemento_bolsa_cemento_04",
+      "objetos": [
+        {
+          "clase": "bolsa_cemento",
+          "xyxy": [
+            0.201,
+            0.047,
+            0.781,
+            0.953
+          ]
+        }
+      ]
+    },
+    {
+      "archivo": "datos/imagenes/bolsa_cemento/bolsa_cemento_05.jpg",
+      "sha256": "2907b27775f4e7608b4e11cc4c441d58d44165be6436a0fc83f8b75f0d9d388f",
+      "ancho": 600,
+      "alto": 600,
+      "origen": "aportada_por_usuario",
+      "procedencia_documentada": false,
+      "estado": "propuesta_automatica",
+      "split": "val",
+      "grupo": "bolsa_cemento_bolsa_cemento_05",
+      "objetos": [
+        {
+          "clase": "bolsa_cemento",
+          "xyxy": [
+            0,
+            0,
+            1,
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "archivo": "datos/imagenes/bolsa_cemento/bolsa_cemento_06.jpg",
+      "sha256": "9106a727c96633dfb29aee188ea4cebfebdec63810598c4582822040e47dd7e5",
+      "ancho": 736,
+      "alto": 1104,
+      "origen": "aportada_por_usuario",
+      "procedencia_documentada": false,
+      "estado": "propuesta_automatica",
+      "split": "train",
+      "grupo": "bolsa_cemento_bolsa_cemento_06",
+      "objetos": [
+        {
+          "clase": "bolsa_cemento",
+          "xyxy": [
+            0,
+            0,
+            1,
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "archivo": "datos/imagenes/bolsa_cemento/bolsa_cemento_07.jpg",
+      "sha256": "2e412fe13dcdff020825c76b8284bcd7f6c21f8a004fc2381a562149755c3624",
+      "ancho": 864,
+      "alto": 1152,
+      "origen": "aportada_por_usuario",
+      "procedencia_documentada": false,
+      "estado": "propuesta_automatica",
+      "split": "train",
+      "grupo": "bolsa_cemento_bolsa_cemento_07",
+      "objetos": [
+        {
+          "clase": "bolsa_cemento",
+          "xyxy": [
+            0,
+            0,
+            1,
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "archivo": "datos/imagenes/bolsa_cemento/bolsa_cemento_08.jpg",
+      "sha256": "bcc6b050b00fa011ae64a828bf3a6177bca0be2da19895fba2cf3bf74ce512b7",
+      "ancho": 320,
+      "alto": 320,
+      "origen": "aportada_por_usuario",
+      "procedencia_documentada": false,
+      "estado": "propuesta_automatica",
+      "split": "train",
+      "grupo": "bolsa_cemento_bolsa_cemento_08",
+      "objetos": [
+        {
+          "clase": "bolsa_cemento",
+          "xyxy": [
+            0,
+            0,
+            1,
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "archivo": "datos/imagenes/bolsa_cemento/bolsa_cemento_09.jpg",
+      "sha256": "30848af35b219535e50c99afa44bab42b64349bad4c333807cc4c718ac87cb9b",
+      "ancho": 370,
+      "alto": 556,
+      "origen": "aportada_por_usuario",
+      "procedencia_documentada": false,
+      "estado": "propuesta_automatica",
+      "split": "train",
+      "grupo": "bolsa_cemento_bolsa_cemento_09",
+      "objetos": [
+        {
+          "clase": "bolsa_cemento",
+          "xyxy": [
+            0,
+            0,
+            1,
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "archivo": "datos/imagenes/bolsa_cemento/bolsa_cemento_10.jpg",
+      "sha256": "67e209d913ee36acd8d9bb429f333f3373161f82fb95f2b3a3d789d73a389941",
+      "ancho": 500,
+      "alto": 500,
+      "origen": "aportada_por_usuario",
+      "procedencia_documentada": false,
+      "estado": "propuesta_automatica",
+      "split": "val",
+      "grupo": "bolsa_cemento_bolsa_cemento_10",
+      "objetos": [
+        {
+          "clase": "bolsa_cemento",
+          "xyxy": [
+            0,
+            0,
+            1,
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "archivo": "datos/imagenes/disco_corte/disco_corte_05.jpg",
+      "sha256": "23d2917170a20294333a98a92f400d20b91223f3f7eeffaeb9b5a4fa4fc614d1",
+      "ancho": 522,
+      "alto": 522,
+      "origen": "aportada_por_usuario",
+      "procedencia_documentada": false,
+      "estado": "propuesta_automatica",
+      "split": "train",
+      "grupo": "disco_corte_disco_corte_05",
+      "objetos": [
+        {
+          "clase": "disco_corte",
+          "xyxy": [
+            0.007662835249042145,
+            0.040229885057471264,
+            0.9923371647509579,
+            0.9770114942528736
+          ]
+        }
+      ]
+    },
+    {
+      "archivo": "datos/imagenes/disco_corte/disco_corte_06.jpg",
+      "sha256": "36e98c198edfa25fe015bd9129d63a826ef22c630651e5f40a8ed766c27efbfe",
+      "ancho": 476,
+      "alto": 468,
+      "origen": "aportada_por_usuario",
+      "procedencia_documentada": false,
+      "estado": "propuesta_automatica",
+      "split": "val",
+      "grupo": "disco_corte_disco_corte_06",
+      "objetos": [
+        {
+          "clase": "disco_corte",
+          "xyxy": [
+            0,
+            0.01282051282051282,
+            0.9957983193277311,
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "archivo": "datos/imagenes/disco_corte/disco_corte_07.jpg",
+      "sha256": "f27a6044b5b5f7c18e6dd9068db30c4c012d919db106a2e4c8f8780bbedbd15a",
+      "ancho": 736,
+      "alto": 920,
+      "origen": "aportada_por_usuario",
+      "procedencia_documentada": false,
+      "estado": "propuesta_automatica",
+      "split": "train",
+      "grupo": "disco_corte_disco_corte_07",
+      "objetos": [
+        {
+          "clase": "disco_corte",
+          "xyxy": [
+            0,
+            0,
+            1,
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "archivo": "datos/imagenes/disco_corte/disco_corte_08.jpg",
+      "sha256": "802c1eaeaefad02c15087588c8dc006c285d83a85731804d5749a8a37d76fe44",
+      "ancho": 1088,
+      "alto": 1440,
+      "origen": "aportada_por_usuario",
+      "procedencia_documentada": false,
+      "estado": "propuesta_automatica",
+      "split": "train",
+      "grupo": "disco_corte_disco_corte_08",
+      "objetos": [
+        {
+          "clase": "disco_corte",
+          "xyxy": [
+            0.6764705882352942,
+            0.42986111111111114,
+            0.9715073529411765,
+            0.7159722222222222
+          ]
+        }
+      ]
+    },
+    {
+      "archivo": "datos/imagenes/disco_corte/disco_corte_09.jpg",
+      "sha256": "6ad2425028e5543fdf1d7f7a1f08a64081af8c80246b5d5561ecf05df1d4b11c",
+      "ancho": 1080,
+      "alto": 1350,
+      "origen": "aportada_por_usuario",
+      "procedencia_documentada": false,
+      "estado": "propuesta_automatica",
+      "split": "train",
+      "grupo": "disco_corte_disco_corte_09",
+      "objetos": [
+        {
+          "clase": "disco_corte",
+          "xyxy": [
+            0,
+            0,
+            1,
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "archivo": "datos/imagenes/disco_corte/disco_corte_10.jpg",
+      "sha256": "e21f67193a9de710133d4cc0f617682e1579fcf44dece8adcba4666e091f8c82",
+      "ancho": 476,
+      "alto": 420,
+      "origen": "aportada_por_usuario",
+      "procedencia_documentada": false,
+      "estado": "propuesta_automatica",
+      "split": "train",
+      "grupo": "disco_corte_disco_corte_10",
+      "objetos": [
+        {
+          "clase": "disco_corte",
+          "xyxy": [
+            0.031512605042016806,
+            0.03333333333333333,
+            0.47058823529411764,
+            0.9714285714285714
+          ]
+        }
+      ]
+    },
+    {
+      "archivo": "datos/imagenes/caja_discos_corte/caja_discos_corte_04.jpg",
+      "sha256": "251f4c891255bd879485266ccfd16fd6fc434e3e1fc63398a1b8896f5765cfb6",
+      "ancho": 520,
+      "alto": 520,
+      "origen": "aportada_por_usuario",
+      "procedencia_documentada": false,
+      "estado": "propuesta_automatica",
+      "split": "train",
+      "grupo": "caja_discos_corte_caja_discos_corte_04",
+      "objetos": [
+        {
+          "clase": "caja_discos_corte",
+          "xyxy": [
+            0.13076923076923078,
+            0.19038461538461537,
+            0.8653846153846154,
+            0.8134615384615385
+          ]
+        }
+      ]
+    },
+    {
+      "archivo": "datos/imagenes/caja_discos_corte/caja_discos_corte_05.jpg",
+      "sha256": "aba790a5b28bc8d6577288517db97e6e27072c260b052b4d92efbc8f8b52507e",
+      "ancho": 600,
+      "alto": 600,
+      "origen": "aportada_por_usuario",
+      "procedencia_documentada": false,
+      "estado": "propuesta_automatica",
+      "split": "val",
+      "grupo": "caja_discos_corte_caja_discos_corte_05",
+      "objetos": [
+        {
+          "clase": "caja_discos_corte",
+          "xyxy": [
+            0,
+            0.13333333333333333,
+            1,
+            0.87
+          ]
+        }
+      ]
+    },
+    {
+      "archivo": "datos/imagenes/caja_discos_corte/caja_discos_corte_06.jpg",
+      "sha256": "4c489e4bb64b1778489d5d6df49d8d65318667148344ff21831d891b942de25e",
+      "ancho": 970,
+      "alto": 970,
+      "origen": "aportada_por_usuario",
+      "procedencia_documentada": false,
+      "estado": "propuesta_automatica",
+      "split": "train",
+      "grupo": "caja_discos_corte_caja_discos_corte_06",
+      "objetos": [
+        {
+          "clase": "caja_discos_corte",
+          "xyxy": [
+            0,
+            0.015463917525773196,
+            0.8092783505154639,
+            0.5639175257731959
+          ]
+        }
+      ]
+    },
+    {
+      "archivo": "datos/imagenes/caja_discos_corte/caja_discos_corte_07.jpg",
+      "sha256": "5886c9b2b484d24d1dcb0bba6152156f886e60a43e198a22d606fc7d0e0875d9",
+      "ancho": 1024,
+      "alto": 682,
+      "origen": "aportada_por_usuario",
+      "procedencia_documentada": false,
+      "estado": "propuesta_automatica",
+      "split": "train",
+      "grupo": "caja_discos_corte_caja_discos_corte_07",
+      "objetos": [
+        {
+          "clase": "caja_discos_corte",
+          "xyxy": [
+            0.171875,
+            0.004398826979472141,
+            0.83984375,
+            0.9970674486803519
+          ]
+        }
+      ]
+    },
+    {
+      "archivo": "datos/imagenes/caja_discos_corte/caja_discos_corte_08.jpg",
+      "sha256": "5106dfd61647e46e8c97940c6aff8747e5f1f776da42c64a85ab7c89e6be3f58",
+      "ancho": 470,
+      "alto": 470,
+      "origen": "aportada_por_usuario",
+      "procedencia_documentada": false,
+      "estado": "excluida",
+      "split": "train",
+      "grupo": "caja_discos_corte_caja_discos_corte_08",
+      "objetos": [
+        {
+          "clase": "caja_discos_corte",
+          "xyxy": [
+            0,
+            0.08723404255319149,
+            1,
+            0.9148936170212766
+          ]
+        }
+      ],
+      "motivo": "Copia idéntica de otra imagen del manifiesto; se conserva, pero no se duplica en entrenamiento."
+    },
+    {
+      "archivo": "datos/imagenes/caja_discos_corte/caja_discos_corte_09.jpg",
+      "sha256": "af9cfe71a652d6dccd1cdc6a3213657c71a7a43dd25690c895c8fe55210c8719",
+      "ancho": 1280,
+      "alto": 1280,
+      "origen": "aportada_por_usuario",
+      "procedencia_documentada": false,
+      "estado": "propuesta_automatica",
+      "split": "train",
+      "grupo": "caja_discos_corte_caja_discos_corte_09",
+      "objetos": [
+        {
+          "clase": "caja_discos_corte",
+          "xyxy": [
+            0.153125,
+            0.03984375,
+            0.784375,
+            0.9796875
+          ]
+        }
+      ]
+    },
+    {
+      "archivo": "datos/imagenes/caja_discos_corte/caja_discos_corte_10.jpg",
+      "sha256": "399812e73f3d6dc7ea5e82e35fdbc4497fd212e8fbe58848dbc178335f58b606",
+      "ancho": 1200,
+      "alto": 1200,
+      "origen": "aportada_por_usuario",
+      "procedencia_documentada": false,
+      "estado": "propuesta_automatica",
+      "split": "val",
+      "grupo": "caja_discos_corte_caja_discos_corte_10",
+      "objetos": [
+        {
+          "clase": "caja_discos_corte",
+          "xyxy": [
+            0.021666666666666667,
+            0.05416666666666667,
+            0.9833333333333333,
+            0.9441666666666667
+          ]
+        }
+      ]
+    },
+    {
+      "archivo": "datos/imagenes/caja_discos_corte/caja_discos_corte_11.jpg",
+      "sha256": "d1c5f3ec7ee3a71b06791d2f8b7c0393b103f66d34fcfe10eb6c7ecae54d2b81",
+      "ancho": 1024,
+      "alto": 1024,
+      "origen": "aportada_por_usuario",
+      "procedencia_documentada": false,
+      "estado": "propuesta_automatica",
+      "split": "train",
+      "grupo": "caja_discos_corte_caja_discos_corte_11",
+      "objetos": [
+        {
+          "clase": "caja_discos_corte",
+          "xyxy": [
+            0.0263671875,
+            0.130859375,
+            0.9658203125,
+            0.822265625
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -23,5 +23,10 @@ Ultralytics/
 
 # Modelos descargados y resultados de pruebas de visión
 modelos/*.pt
+modelos/*.json
 resultados/
 runs/
+
+# Copias de entrenamiento regenerables desde las anotaciones
+datos/dataset_yolo*/
+*.cache

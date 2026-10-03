@@ -8,7 +8,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from sivia_inventario.base_datos import RAIZ, inicializar_base_datos
-from sivia_inventario.repositorio_inventario import resumen_dashboard
+from sivia_inventario.repositorio_inventario import listar_productos, resumen_dashboard
 
 PLANTILLAS = RAIZ / "src" / "sivia_inventario" / "plantillas"
 ESTATICOS = RAIZ / "src" / "sivia_inventario" / "estaticos"
@@ -30,5 +30,25 @@ def inicio(request: Request):
     return plantillas.TemplateResponse(
         request,
         "inicio.html",
-        {"resumen": resumen_dashboard(), "productos": 8},
+        {"pagina": "inicio", "resumen": resumen_dashboard()},
     )
+
+
+@app.get("/inventario", response_class=HTMLResponse)
+def inventario(request: Request):
+    return plantillas.TemplateResponse(request, "inventario.html", {"pagina": "inventario", "productos": listar_productos()})
+
+
+@app.get("/verificar", response_class=HTMLResponse)
+def verificar(request: Request):
+    return plantillas.TemplateResponse(request, "verificar.html", {"pagina": "verificar"})
+
+
+@app.get("/historial", response_class=HTMLResponse)
+def historial(request: Request):
+    return plantillas.TemplateResponse(request, "historial.html", {"pagina": "historial"})
+
+
+@app.get("/alertas", response_class=HTMLResponse)
+def alertas(request: Request):
+    return plantillas.TemplateResponse(request, "alertas.html", {"pagina": "alertas"})

@@ -1,1 +1,19 @@
-{% extends "base.html" %}{% block titulo %}Verificar inventario{% endblock %}{% block contenido %}<section class="titulo-pagina"><div><p class="sobretitulo">Conteo físico asistido</p><h1>Verificar inventario</h1><p>Captura evidencia y revisa el conteo antes de guardarlo.</p></div></section><section class="verificador"><div class="panel escaner"><div class="modos"><button class="activo" disabled>◉ Cámara</button><button disabled>⇧ Subir imagen</button><button disabled>▣ Múltiples fotos</button></div><div class="visor"><span>◉</span><h2>Cámara lista para configurar</h2><p>La cámara de laptop o celular y la carga de imágenes se conectarán en la siguiente etapa.</p><button class="boton primario" disabled>Iniciar cámara</button></div></div><aside class="panel"><h2>Flujo de verificación</h2><ol><li>1 · Capturar evidencia</li><li>2 · Analizar con YOLO</li><li>3 · Revisar conteos</li><li>4 · Comparar y guardar</li></ol><p class="aviso">El modelo actual es experimental. SIVIA no actualizará el stock automáticamente.</p></aside></section>{% endblock %}
+{% extends "base.html" %}
+{% block titulo %}Verificar inventario{% endblock %}
+{% block extra_head %}<link rel="stylesheet" href="/static/verificar_activo.css">{% endblock %}
+{% block contenido %}
+<p class="sobretitulo">Conteo físico asistido</p>
+<section class="titulo-pagina"><div><h1>Verificar inventario</h1><p>Captura evidencia y confirma el conteo antes de registrarlo.</p></div></section>
+<section class="verificador"><section class="panel escaner">
+  <div class="modos"><button type="button" data-modo="camara">Cámara</button><button class="activo" type="button" data-modo="archivo">Subir imagen</button></div>
+  {% if error %}<p class="error">{{ error }}</p>{% endif %}
+  <div class="modelo-activo"><strong>IA activa:</strong> {{ modelo_activo.nombre }}<small>El modelo se selecciona automáticamente. <a href="/verificar/tecnico">Opciones técnicas y comparación</a></small></div>
+  <form method="post" action="/verificar/analizar" enctype="multipart/form-data" id="form-evidencia">
+    <div class="visor"><label for="procedencia"><strong>Procedencia de la fotografía</strong></label><select id="procedencia" name="procedencia"><option value="prueba_fisica">Prueba física</option><option value="distribuidora_atencio">Distribuidora Atencio</option><option value="internet">Internet (solo prueba de detección)</option></select><p class="aviso">Las imágenes de Internet no permiten verificar existencias. El modelo nunca actualiza stock.</p></div>
+    <div class="visor" id="panel-archivo"><span>⌕</span><h2>Cámara lista o sube una imagen</h2><p>Selecciona una fotografía clara donde se vean los productos completos.</p><label class="boton primario" for="evidencia">Seleccionar imagen</label><input id="evidencia" type="file" name="evidencia" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" capture="environment" required></div>
+    <div class="visor" id="panel-camara" hidden><video id="video-camara" autoplay playsinline></video><canvas id="lienzo-camara" hidden></canvas><p id="estado-camara">Activa la cámara para capturar la evidencia.</p><button class="boton secundario" id="iniciar-camara" type="button">Iniciar cámara</button><button class="boton primario" id="capturar-camara" type="button" disabled>Capturar y analizar</button></div>
+    <p id="estado-analisis" class="estado-analisis" role="status" hidden>Analizando imagen con IA…</p><button class="boton primario boton-analizar" type="submit">Analizar imagen con IA</button>
+  </form>
+</section><aside class="panel flujo"><h2>Flujo de verificación</h2><ol><li>Captura evidencia</li><li>YOLO detecta objetos reales</li><li>Revisa cajas y conteos</li><li>Confirma y guarda</li></ol><p class="aviso">Una fotografía no representa todo el inventario salvo que confirmes expresamente su alcance.</p></aside></section>
+<script src="/static/verificar.js"></script>
+{% endblock %}

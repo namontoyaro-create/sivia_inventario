@@ -299,7 +299,7 @@ def main() -> None:
     parser.add_argument("--manifiesto", type=Path, default=MANIFIESTO)
     parser.add_argument("--exportar", action="store_true")
     parser.add_argument("--proponer", action="store_true")
-    parser.add_argument("--salida", type=Path, default=RAIZ / "datos/dataset_yolo")
+    parser.add_argument("--salida", type=Path, default=RAIZ / "datos/entrenamiento/experimental/dataset_yolo")
     parser.add_argument("--revision", action="store_true")
     args = parser.parse_args()
     try:

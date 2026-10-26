@@ -44,9 +44,10 @@ def verificar_exportacion(config: Path) -> dict:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Entrenar un detector experimental de ferretería")
-    parser.add_argument("--datos", type=Path, default=RAIZ / "datos/dataset_yolo/data.yaml")
+    parser.add_argument("--datos", type=Path, default=RAIZ / "datos/entrenamiento/pilotos/piloto_v1/data.yaml")
     parser.add_argument("--epocas", type=int, default=30)
     parser.add_argument("--tamano", type=int, default=320)
+    parser.add_argument("--nombre", default="piloto", help="Prefijo aislado para resultados y pesos.")
     parser.add_argument("--experimental", action="store_true", help="Reconoce que el dataset piloto no valida fiabilidad en inventario")
     args = parser.parse_args()
     if not args.experimental:
@@ -60,6 +61,9 @@ def main() -> None:
 
         torch.set_num_threads(4)
         instante = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S_%f")
+        nombre = "".join(caracter for caracter in args.nombre if caracter.isalnum() or caracter in "_-")
+        if not nombre:
+            parser.error("El nombre debe contener letras, números, guiones o guiones bajos.")
         print("ENTRENAMIENTO EXPERIMENTAL: no valida conteo fiable en almacén.", flush=True)
         for aviso in informe["advertencias"]:
             print(aviso, flush=True)
@@ -69,13 +73,13 @@ def main() -> None:
             batch=4, nbs=4, optimizer="AdamW", lr0=0.001,
             device="cpu", workers=0, amp=False, cache=False,
             seed=42, deterministic=True, freeze=10, patience=25,
-            project=str(RAIZ / "resultados/entrenamiento"), name=f"piloto_{instante}",
+            project=str(RAIZ / "resultados/entrenamiento"), name=f"{nombre}_{instante}",
             exist_ok=False, plots=True, verbose=False,
         )
         mejor = Path(modelo.trainer.best)
         if not mejor.is_file():
             raise RuntimeError("No se generó best.pt.")
-        destino = RAIZ / "modelos" / f"ferreteria_piloto_{instante}.pt"
+        destino = RAIZ / "modelos" / f"ferreteria_{nombre}_{instante}.pt"
         shutil.copy2(mejor, destino)
         metricas = {str(k): float(v) for k, v in modelo.trainer.metrics.items()}
         registro = {

@@ -108,9 +108,22 @@
       "alto": 624,
       "origen": "aportada_por_usuario",
       "procedencia_documentada": false,
-      "estado": "excluida",
-      "motivo": "Composición de dos vistas de empaque; falta confirmar si son unidades distintas.",
-      "objetos": []
+      "estado": "revisada_usuario",
+      "tipo_fuente": "apoyo_comercial",
+      "split": "train",
+      "grupo": "bolsa_clavos_bolsa_clavos_02",
+      "motivo": "Propuesta ajustada: una bolsa principal visible. La caja excluye la segunda vista o contenido a la derecha y el texto de presentación.",
+      "objetos": [
+        {
+          "clase": "bolsa_clavos",
+          "xyxy": [
+            0.12,
+            0.12,
+            0.59,
+            0.86
+          ]
+        }
+      ]
     },
     {
       "archivo": "datos/imagenes/bolsa_clavos/bolsa_clavos_03.jpg",
@@ -480,9 +493,22 @@
       "alto": 500,
       "origen": "aportada_por_usuario",
       "procedencia_documentada": false,
-      "estado": "excluida",
-      "motivo": "Pila de discos parcialmente oculta; las unidades no se delimitan con fiabilidad.",
-      "objetos": []
+      "estado": "revisada_usuario",
+      "tipo_fuente": "apoyo_comercial",
+      "split": "train",
+      "grupo": "disco_corte_disco_corte_04",
+      "motivo": "Propuesta: solo el disco frontal está claramente delimitado; la pila posterior permanece sin contar.",
+      "objetos": [
+        {
+          "clase": "disco_corte",
+          "xyxy": [
+            0.17,
+            0.06,
+            0.87,
+            0.82
+          ]
+        }
+      ]
     },
     {
       "archivo": "datos/imagenes/tuberia_pvc/tuberia_pvc_01.jpg",
@@ -811,20 +837,31 @@
       "alto": 480,
       "origen": "aportada_por_usuario",
       "procedencia_documentada": false,
-      "estado": "revisada_asistente",
+      "estado": "revisada_usuario",
+      "tipo_fuente": "fotografia_real",
       "split": "train",
       "grupo": "caja_clavos_caja_clavos_07",
       "objetos": [
         {
           "clase": "caja_clavos",
           "xyxy": [
-            0,
-            0,
-            1,
-            1
+            0.08,
+            0.21,
+            0.75,
+            0.82
+          ]
+        },
+        {
+          "clase": "bolsa_clavos",
+          "xyxy": [
+            0.51,
+            0.32,
+            0.91,
+            0.88
           ]
         }
-      ]
+      ],
+      "motivo": "Propuesta ajustada: una caja de clavos parcialmente ocluida y una bolsa de clavos visibles; cada producto conserva su caja independiente."
     },
     {
       "archivo": "datos/imagenes/caja_clavos/caja_clavos_08.jpg",
@@ -900,21 +937,67 @@
       "alto": 554,
       "origen": "aportada_por_usuario",
       "procedencia_documentada": false,
-      "estado": "excluida",
+      "estado": "revisada_usuario",
+      "tipo_fuente": "apoyo_comercial",
       "split": "train",
       "grupo": "candado_candado_04",
       "objetos": [
         {
           "clase": "candado",
           "xyxy": [
-            0.296028880866426,
-            0.11552346570397112,
-            0.5090252707581228,
-            0.43501805054151627
+            0.3,
+            0.13,
+            0.5,
+            0.41
+          ]
+        },
+        {
+          "clase": "candado",
+          "xyxy": [
+            0.51,
+            0.16,
+            0.7,
+            0.41
+          ]
+        },
+        {
+          "clase": "candado",
+          "xyxy": [
+            0.23,
+            0.44,
+            0.4,
+            0.75
+          ]
+        },
+        {
+          "clase": "candado",
+          "xyxy": [
+            0.39,
+            0.45,
+            0.55,
+            0.74
+          ]
+        },
+        {
+          "clase": "candado",
+          "xyxy": [
+            0.55,
+            0.49,
+            0.7,
+            0.74
+          ]
+        },
+        {
+          "clase": "candado",
+          "xyxy": [
+            0.69,
+            0.51,
+            0.82,
+            0.74
           ]
         }
       ],
-      "motivo": "Muestra varios candados; las cajas propuestas no cubren todas las unidades."
+      "motivo": "Propuesta ajustada: seis candados visibles y distinguibles, cada uno con su propia caja; requiere aprobación humana."
     },
     {
       "archivo": "datos/imagenes/candado/candado_05.jpg",
@@ -1601,20 +1684,8 @@
       "origen": "aportada_por_usuario",
       "procedencia_documentada": false,
       "estado": "excluida",
-      "split": "train",
-      "grupo": "disco_corte_disco_corte_08",
-      "objetos": [
-        {
-          "clase": "disco_corte",
-          "xyxy": [
-            0.6764705882352942,
-            0.42986111111111114,
-            0.9715073529411765,
-            0.7159722222222222
-          ]
-        }
-      ],
-      "motivo": "Infografía con múltiples discos; no es una escena de conteo anotable."
+      "objetos": [],
+      "motivo": "Infografía de nueve tipos de discos. Incluye sierras, discos flap y discos de desbaste; son ilustraciones y no unidades físicas para conteo."
     },
     {
       "archivo": "datos/imagenes/disco_corte/disco_corte_09.jpg",
@@ -1623,20 +1694,22 @@
       "alto": 1350,
       "origen": "aportada_por_usuario",
       "procedencia_documentada": false,
-      "estado": "revisada_asistente",
+      "estado": "revisada_usuario",
+      "tipo_fuente": "apoyo_comercial",
       "split": "train",
       "grupo": "disco_corte_disco_corte_09",
       "objetos": [
         {
           "clase": "disco_corte",
           "xyxy": [
-            0,
-            0,
-            1,
-            1
+            0.2,
+            0.44,
+            0.8,
+            0.92
           ]
         }
-      ]
+      ],
+      "motivo": "Propuesta: un disco de corte físico visible. La caja excluye el encabezado, logotipos y elementos publicitarios del diseño."
     },
     {
       "archivo": "datos/imagenes/disco_corte/disco_corte_10.jpg",
@@ -1645,21 +1718,103 @@
       "alto": 420,
       "origen": "aportada_por_usuario",
       "procedencia_documentada": false,
-      "estado": "excluida",
+      "estado": "revisada_usuario",
+      "tipo_fuente": "apoyo_comercial",
       "split": "train",
       "grupo": "disco_corte_disco_corte_10",
       "objetos": [
         {
           "clase": "disco_corte",
           "xyxy": [
-            0.031512605042016806,
-            0.03333333333333333,
-            0.47058823529411764,
-            0.9714285714285714
+            0.12,
+            0.05,
+            0.46,
+            0.45
+          ]
+        },
+        {
+          "clase": "disco_corte",
+          "xyxy": [
+            0.12,
+            0.13,
+            0.46,
+            0.54
+          ]
+        },
+        {
+          "clase": "disco_corte",
+          "xyxy": [
+            0.12,
+            0.22,
+            0.46,
+            0.63
+          ]
+        },
+        {
+          "clase": "disco_corte",
+          "xyxy": [
+            0.13,
+            0.31,
+            0.46,
+            0.72
+          ]
+        },
+        {
+          "clase": "disco_corte",
+          "xyxy": [
+            0.12,
+            0.4,
+            0.47,
+            0.89
+          ]
+        },
+        {
+          "clase": "disco_corte",
+          "xyxy": [
+            0.56,
+            0.04,
+            0.89,
+            0.45
+          ]
+        },
+        {
+          "clase": "disco_corte",
+          "xyxy": [
+            0.56,
+            0.13,
+            0.89,
+            0.54
+          ]
+        },
+        {
+          "clase": "disco_corte",
+          "xyxy": [
+            0.56,
+            0.22,
+            0.89,
+            0.63
+          ]
+        },
+        {
+          "clase": "disco_corte",
+          "xyxy": [
+            0.56,
+            0.31,
+            0.89,
+            0.72
+          ]
+        },
+        {
+          "clase": "disco_corte",
+          "xyxy": [
+            0.56,
+            0.4,
+            0.89,
+            0.89
           ]
         }
       ],
-      "motivo": "Dos columnas de varios discos; no están delimitados individualmente."
+      "motivo": "Propuesta: diez discos visibles, cinco por columna; requiere aprobación humana por el solapamiento."
     },
     {
       "archivo": "datos/imagenes/caja_discos_corte/caja_discos_corte_04.jpg",
@@ -1668,7 +1823,8 @@
       "alto": 520,
       "origen": "aportada_por_usuario",
       "procedencia_documentada": false,
-      "estado": "revisada_asistente",
+      "estado": "revisada_usuario",
+      "tipo_fuente": "apoyo_comercial",
       "split": "train",
       "grupo": "caja_discos_corte_caja_discos_corte_04",
       "objetos": [
@@ -1681,7 +1837,8 @@
             0.8134615384615385
           ]
         }
-      ]
+      ],
+      "motivo": "Propuesta: recipiente comercial TOTAL identificado como presentación de discos de corte x50; se etiqueta como caja_discos_corte, no como disco individual."
     },
     {
       "archivo": "datos/imagenes/caja_discos_corte/caja_discos_corte_05.jpg",
@@ -1713,20 +1870,8 @@
       "origen": "aportada_por_usuario",
       "procedencia_documentada": false,
       "estado": "excluida",
-      "split": "train",
-      "grupo": "caja_discos_corte_caja_discos_corte_06",
-      "objetos": [
-        {
-          "clase": "caja_discos_corte",
-          "xyxy": [
-            0,
-            0.015463917525773196,
-            0.8092783505154639,
-            0.5639175257731959
-          ]
-        }
-      ],
-      "motivo": "Maletín y discos sueltos: la presentación caja de discos es ambigua."
+      "objetos": [],
+      "motivo": "Montaje comercial: el maletín Bosch no demuestra ser una caja de discos del catálogo y los discos inferiores están solapados. No permite un conteo físico confiable."
     },
     {
       "archivo": "datos/imagenes/caja_discos_corte/caja_discos_corte_07.jpg",
@@ -1824,21 +1969,382 @@
       "alto": 1024,
       "origen": "aportada_por_usuario",
       "procedencia_documentada": false,
-      "estado": "excluida",
+      "estado": "revisada_usuario",
+      "tipo_fuente": "apoyo_comercial",
       "split": "train",
       "grupo": "caja_discos_corte_caja_discos_corte_11",
       "objetos": [
         {
           "clase": "caja_discos_corte",
           "xyxy": [
-            0.0263671875,
-            0.130859375,
-            0.9658203125,
-            0.822265625
+            0.03,
+            0.24,
+            0.59,
+            0.82
+          ]
+        },
+        {
+          "clase": "caja_discos_corte",
+          "xyxy": [
+            0.42,
+            0.15,
+            0.96,
+            0.8
           ]
         }
       ],
-      "motivo": "Varias presentaciones de cajas en una composición; no se anotaron por unidad."
+      "motivo": "Propuesta: dos cajas de discos visibles; los discos impresos en el empaque no se cuentan como discos físicos."
+    },
+    {
+      "archivo": "datos/imagenes/candado/candado1.jpg",
+      "sha256": "f25ebb525d41befefff8620b3ed290be8a01eb2dc209ab7d745cbf7a4b22be21",
+      "ancho": 1732,
+      "alto": 1732,
+      "origen": "internet",
+      "procedencia_documentada": true,
+      "estado": "revisada_usuario",
+      "tipo_fuente": "apoyo_comercial",
+      "split": "train",
+      "grupo": "candado_internet_lote_01",
+      "objetos": [
+        {
+          "clase": "candado",
+          "xyxy": [
+            0.11,
+            0.06,
+            0.52,
+            0.75
+          ]
+        }
+      ],
+      "motivo": "Rectángulos aprobados explícitamente para preparación del siguiente entrenamiento."
+    },
+    {
+      "archivo": "datos/imagenes/candado/candado3.jpg",
+      "sha256": "b5ca62188bc67d030da7422a80d3c573deb70811c5e7f7997246deb16b146f91",
+      "ancho": 575,
+      "alto": 640,
+      "origen": "internet",
+      "procedencia_documentada": true,
+      "estado": "revisada_usuario",
+      "tipo_fuente": "apoyo_comercial",
+      "split": "train",
+      "grupo": "candado_internet_lote_03",
+      "objetos": [
+        {
+          "clase": "candado",
+          "xyxy": [
+            0.13,
+            0.08,
+            0.83,
+            0.9
+          ]
+        }
+      ],
+      "motivo": "Rectángulos aprobados explícitamente para preparación del siguiente entrenamiento."
+    },
+    {
+      "archivo": "datos/imagenes/candado/candado5.jpg",
+      "sha256": "1624e0fedd775faa6b06507b23d1eba54f28b64dc9f60acee699afaacb7148ff",
+      "ancho": 600,
+      "alto": 800,
+      "origen": "internet",
+      "procedencia_documentada": true,
+      "estado": "revisada_usuario",
+      "tipo_fuente": "apoyo_comercial",
+      "split": "val",
+      "grupo": "candado_internet_lote_05",
+      "objetos": [
+        {
+          "clase": "candado",
+          "xyxy": [
+            0.12,
+            0.22,
+            0.36,
+            0.54
+          ]
+        },
+        {
+          "clase": "candado",
+          "xyxy": [
+            0.37,
+            0.31,
+            0.56,
+            0.6
+          ]
+        },
+        {
+          "clase": "candado",
+          "xyxy": [
+            0.54,
+            0.33,
+            0.72,
+            0.59
+          ]
+        },
+        {
+          "clase": "candado",
+          "xyxy": [
+            0.72,
+            0.33,
+            0.91,
+            0.57
+          ]
+        }
+      ],
+      "motivo": "Rectángulos aprobados explícitamente para preparación del siguiente entrenamiento."
+    },
+    {
+      "archivo": "datos/imagenes/tuberia_pvc/tuvo1.jpg",
+      "sha256": "3b464dfe9acda698d62c03b726dd8b5665155bf3c8f86cf11d3c45291d83da79",
+      "ancho": 1000,
+      "alto": 1000,
+      "origen": "origen_no_confirmado",
+      "procedencia_documentada": false,
+      "estado": "revisada_usuario",
+      "tipo_fuente": "origen_no_confirmado",
+      "split": "train",
+      "grupo": "tuberia_pvc_nueva_01",
+      "objetos": [
+        {
+          "clase": "tuberia_pvc",
+          "xyxy": [
+            0.08,
+            0.12,
+            0.88,
+            0.83
+          ]
+        }
+      ],
+      "motivo": "Rectángulos aprobados explícitamente para preparación del siguiente entrenamiento."
+    },
+    {
+      "archivo": "datos/imagenes/tuberia_pvc/tuvo6.jpg",
+      "sha256": "8ccaed19046ce13c5ca431096f14b420f1883d450e8ef9c99e59548d185caaaa",
+      "ancho": 736,
+      "alto": 736,
+      "origen": "origen_no_confirmado",
+      "procedencia_documentada": false,
+      "estado": "revisada_usuario",
+      "tipo_fuente": "origen_no_confirmado",
+      "split": "train",
+      "grupo": "tuberia_pvc_nueva_06",
+      "objetos": [
+        {
+          "clase": "tuberia_pvc",
+          "xyxy": [
+            0.08,
+            0.24,
+            0.98,
+            0.54
+          ]
+        }
+      ],
+      "motivo": "Rectángulos aprobados explícitamente para preparación del siguiente entrenamiento."
+    },
+    {
+      "archivo": "datos/imagenes/tuberia_pvc/tuvo7.jpg",
+      "sha256": "0b480b40376e12ad3d2d79c0f2605a04ec959bc163bf6c3526bb4d7eb6ce124a",
+      "ancho": 580,
+      "alto": 391,
+      "origen": "origen_no_confirmado",
+      "procedencia_documentada": false,
+      "estado": "revisada_usuario",
+      "tipo_fuente": "origen_no_confirmado",
+      "split": "val",
+      "grupo": "tuberia_pvc_nueva_07",
+      "objetos": [
+        {
+          "clase": "tuberia_pvc",
+          "xyxy": [
+            0.1,
+            0.2,
+            0.9,
+            0.66
+          ]
+        }
+      ],
+      "motivo": "Rectángulos aprobados explícitamente para preparación del siguiente entrenamiento."
+    },
+    {
+      "archivo": "datos/imagenes/candado/Candado2.jpg",
+      "sha256": "36ceecf0290b0b4e403a1fa163da25a8b9013b4b9538f087ed7ec5dbe0cc5cd2",
+      "ancho": 1280,
+      "alto": 1280,
+      "origen": "internet",
+      "procedencia_documentada": true,
+      "estado": "revisada_usuario",
+      "tipo_fuente": "apoyo_comercial",
+      "split": "train",
+      "grupo": "candado_internet_lote_02",
+      "objetos": [
+        {
+          "clase": "candado",
+          "xyxy": [
+            0.167,
+            0.006,
+            0.535,
+            0.645
+          ]
+        },
+        {
+          "clase": "candado",
+          "xyxy": [
+            0.526,
+            0.018,
+            0.86,
+            0.57
+          ]
+        },
+        {
+          "clase": "candado",
+          "xyxy": [
+            0.082,
+            0.453,
+            0.328,
+            0.78
+          ]
+        },
+        {
+          "clase": "candado",
+          "xyxy": [
+            0.142,
+            0.59,
+            0.378,
+            0.867
+          ]
+        },
+        {
+          "clase": "candado",
+          "xyxy": [
+            0.361,
+            0.414,
+            0.5,
+            0.795
+          ]
+        },
+        {
+          "clase": "candado",
+          "xyxy": [
+            0.465,
+            0.538,
+            0.656,
+            0.875
+          ]
+        },
+        {
+          "clase": "candado",
+          "xyxy": [
+            0.734,
+            0.47,
+            0.957,
+            0.85
+          ]
+        }
+      ],
+      "motivo": "Rectángulos aprobados explícitamente para preparación del siguiente entrenamiento."
+    },
+    {
+      "archivo": "datos/imagenes/candado/candado4.jpg",
+      "sha256": "e798d6edae39f57d75b8f8a6fc752946cccce45c8a9c89e3275e3bc101f197a4",
+      "ancho": 1000,
+      "alto": 1000,
+      "origen": "internet",
+      "procedencia_documentada": true,
+      "estado": "revisada_usuario",
+      "tipo_fuente": "apoyo_comercial",
+      "split": "val",
+      "grupo": "candado_internet_lote_04",
+      "objetos": [
+        {
+          "clase": "candado",
+          "xyxy": [
+            0.116,
+            0.3,
+            0.475,
+            0.89
+          ]
+        },
+        {
+          "clase": "candado",
+          "xyxy": [
+            0.218,
+            0.235,
+            0.6,
+            0.82
+          ]
+        },
+        {
+          "clase": "candado",
+          "xyxy": [
+            0.343,
+            0.158,
+            0.714,
+            0.75
+          ]
+        },
+        {
+          "clase": "candado",
+          "xyxy": [
+            0.466,
+            0.1,
+            0.82,
+            0.61
+          ]
+        }
+      ],
+      "motivo": "Rectángulos aprobados explícitamente para preparación del siguiente entrenamiento."
+    },
+    {
+      "archivo": "datos/imagenes/tuberia_pvc/tuvo2.jpg",
+      "sha256": "2ae441ed365806c3bbfdc2030d8af39f38c3d814fa67131bbd02bc87ea00e4e2",
+      "ancho": 640,
+      "alto": 640,
+      "origen": "origen_no_confirmado",
+      "procedencia_documentada": false,
+      "estado": "revisada_usuario",
+      "tipo_fuente": "origen_no_confirmado",
+      "split": "val",
+      "grupo": "tuberia_pvc_nueva_02",
+      "objetos": [
+        {
+          "clase": "tuberia_pvc",
+          "xyxy": [
+            0.116,
+            0.098,
+            0.884,
+            0.486
+          ]
+        },
+        {
+          "clase": "tuberia_pvc",
+          "xyxy": [
+            0.2,
+            0.128,
+            0.992,
+            0.562
+          ]
+        },
+        {
+          "clase": "tuberia_pvc",
+          "xyxy": [
+            0.312,
+            0.2,
+            0.994,
+            0.655
+          ]
+        },
+        {
+          "clase": "tuberia_pvc",
+          "xyxy": [
+            0.447,
+            0.277,
+            0.994,
+            0.723
+          ]
+        }
+      ],
+      "motivo": "Rectángulos aprobados explícitamente para preparación del siguiente entrenamiento."
     }
   ]
 }

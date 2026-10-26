@@ -1,0 +1,6 @@
+{% extends "base.html" %}
+{% block titulo %}Movimientos{% endblock %}
+{% block contenido %}
+<p class="sobretitulo">Inventario confirmado</p><section class="titulo-pagina"><div><h1>Historial de movimientos</h1><p>Entradas y salidas confirmadas desde el Asistente de voz.</p></div><a class="boton primario" href="/asistente-voz">Nueva instrucción de voz</a></section>
+{% if movimientos %}<section class="panel tabla"><table><thead><tr><th>Movimiento</th><th>Fecha</th><th>Producto</th><th>Operación</th><th>Cantidad</th><th>Stock anterior</th><th>Stock resultante</th></tr></thead><tbody>{% for movimiento in movimientos %}<tr><td><strong>{{ movimiento.codigo_movimiento }}</strong></td><td>{{ movimiento.confirmado_en }}</td><td>{{ movimiento.codigo_producto }} · {{ movimiento.producto }}</td><td>{{ movimiento.operacion|capitalize }}</td><td>{{ movimiento.cantidad }}</td><td>{{ movimiento.stock_anterior }}</td><td><strong>{{ movimiento.stock_resultante }}</strong></td></tr>{% endfor %}</tbody></table></section>{% else %}<section class="panel estado-vacio"><h2>No hay movimientos confirmados</h2><p>Las consultas y las transcripciones no se registran como movimientos.</p></section>{% endif %}
+{% endblock %}

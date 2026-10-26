@@ -1,0 +1,87 @@
+{
+  "version": 2,
+  "estado": "preparacion_progresiva",
+  "manifiesto_base": "datos/anotaciones/ferreteria.json",
+  "regla_procedencia_existente": {
+    "origen": "origen_no_confirmado",
+    "descripcion": "Se aplica a cada imagen existente salvo una excepción documentada. No se debe inferir que una imagen comercial represente inventario real."
+  },
+  "excepciones_tipo_fuente": {
+    "datos/imagenes/caja_clavos/caja_clavos_07.jpg": "fotografia_real",
+    "datos/imagenes/bolsa_clavos/bolsa_clavos_02.jpg": "apoyo_comercial",
+    "datos/imagenes/candado/candado_04.jpg": "apoyo_comercial",
+    "datos/imagenes/disco_corte/disco_corte_04.jpg": "apoyo_comercial",
+    "datos/imagenes/disco_corte/disco_corte_09.jpg": "apoyo_comercial",
+    "datos/imagenes/disco_corte/disco_corte_10.jpg": "apoyo_comercial",
+    "datos/imagenes/caja_discos_corte/caja_discos_corte_04.jpg": "apoyo_comercial",
+    "datos/imagenes/caja_discos_corte/caja_discos_corte_11.jpg": "apoyo_comercial"
+  },
+  "grupos_repetidos": [
+    {
+      "grupo": "tubo_catalogo_similar",
+      "archivos": [
+        "datos/imagenes/tuberia_pvc/tuberia_pvc_01.jpg",
+        "datos/imagenes/tuberia_pvc/tuberia_pvc_03.jpg"
+      ],
+      "regla_v2": "Conservar como un solo grupo de escena. No contará como dos escenas independientes."
+    },
+    {
+      "grupo": "bolsa_clavos_bolsa_clavos_10",
+      "archivos": [
+        "datos/imagenes/bolsa_clavos/bolsa_clavos_10.jpg",
+        "datos/imagenes/bolsa_clavos/bolsa_clavos_10.png"
+      ],
+      "regla_v2": "Conservar como un solo grupo de escena. No contará como dos escenas independientes."
+    }
+  ],
+  "imagenes_nuevas_pendientes": [
+    {
+      "archivo": "datos/imagenes/candado/candado1.jpg",
+      "clase_ia": "candado",
+      "origen": "internet",
+      "grupo_escena": "candado_internet_lote_01",
+      "estado": "pendiente_revision_visual"
+    },
+    {
+      "archivo": "datos/imagenes/candado/Candado2.jpg",
+      "clase_ia": "candado",
+      "origen": "internet",
+      "grupo_escena": "candado_internet_lote_02",
+      "estado": "pendiente_revision_visual"
+    },
+    {
+      "archivo": "datos/imagenes/candado/candado3.jpg",
+      "clase_ia": "candado",
+      "origen": "internet",
+      "grupo_escena": "candado_internet_lote_03",
+      "estado": "pendiente_revision_visual"
+    },
+    {
+      "archivo": "datos/imagenes/candado/candado4.jpg",
+      "clase_ia": "candado",
+      "origen": "internet",
+      "grupo_escena": "candado_internet_lote_04",
+      "estado": "pendiente_revision_visual"
+    },
+    {
+      "archivo": "datos/imagenes/candado/candado5.jpg",
+      "clase_ia": "candado",
+      "origen": "internet",
+      "grupo_escena": "candado_internet_lote_05",
+      "estado": "pendiente_revision_visual"
+    },
+    {
+      "archivo": "datos/imagenes/candado/candado6.jpg",
+      "clase_ia": "candado",
+      "origen": "internet",
+      "grupo_escena": "candado_internet_lote_06",
+      "estado": "pendiente_revision_visual"
+    }
+  ],
+  "fuentes_permitidas_nuevas": [
+    "internet",
+    "prueba_fisica",
+    "distribuidora_atencio"
+  ],
+  "regla_splits": "Las variantes de una misma escena se asignarán juntas a train, val o test. El conjunto test quedará reservado y no se usará para ajustar el entrenamiento."
+}

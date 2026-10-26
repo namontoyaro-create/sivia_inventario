@@ -4,6 +4,7 @@ import argparse
 from datetime import datetime, timezone
 import json
 import math
+import os
 from pathlib import Path
 import uuid
 
@@ -17,6 +18,81 @@ from sivia_inventario.stock import cargar_stock_referencia
 from sivia_inventario.verificacion import comparar_conteos
 
 MODELO_GENERAL = RAIZ / "modelos/yolo26n.pt"
+MODELO_PILOTO = RAIZ / "runs/detect/resultados/entrenamiento_yolo/piloto_v1/weights/best.pt"
+MODELO_PILOTO_V2 = RAIZ / "modelos/ferreteria_v2_20261013_021350_326502.pt"
+# La interfaz normal no expone esta elección. Para activar un futuro v3 se
+# configura SIVIA_DETECTOR_ACTIVO o se actualiza este valor, sin rediseñar UI.
+DETECTOR_ACTIVO_PREDETERMINADO = os.getenv("SIVIA_DETECTOR_ACTIVO", "piloto_sivia_v2")
+
+
+def detectores_disponibles() -> dict[str, dict]:
+    """Describe detectores locales sin sustituir el modelo general existente."""
+    return {
+        "general": {
+            "nombre": "YOLO general",
+            "ruta": MODELO_GENERAL,
+            "experimental": False,
+            "descripcion": "Modelo general; sus clases no equivalen necesariamente al catálogo.",
+        },
+        "piloto_sivia": {
+            "nombre": "YOLO piloto SIVIA (best.pt)",
+            "ruta": MODELO_PILOTO,
+            "experimental": True,
+            "descripcion": "Piloto entrenado con referencias comerciales; requiere revisión humana.",
+        },
+        "piloto_sivia_v2": {
+            "nombre": "YOLO piloto SIVIA v2 (best.pt)",
+            "ruta": MODELO_PILOTO_V2,
+            "experimental": True,
+            "descripcion": "Versión v2 experimental; no reemplaza el piloto v1 ni valida inventario físico.",
+        },
+    }
+
+
+def detector_activo() -> tuple[str, dict]:
+    """Obtiene un único detector para el flujo normal, con respaldo local."""
+    detectores = detectores_disponibles()
+    for identificador in (DETECTOR_ACTIVO_PREDETERMINADO, "piloto_sivia", "general"):
+        datos = detectores.get(identificador)
+        if datos and datos["ruta"].is_file():
+            return identificador, datos
+    raise FileNotFoundError("No hay un modelo YOLO local disponible para SIVIA.")
+
+
+def _iou(caja_a: list[float], caja_b: list[float]) -> float:
+    izquierda, arriba = max(caja_a[0], caja_b[0]), max(caja_a[1], caja_b[1])
+    derecha, abajo = min(caja_a[2], caja_b[2]), min(caja_a[3], caja_b[3])
+    interseccion = max(0.0, derecha - izquierda) * max(0.0, abajo - arriba)
+    area_a = max(0.0, caja_a[2] - caja_a[0]) * max(0.0, caja_a[3] - caja_a[1])
+    area_b = max(0.0, caja_b[2] - caja_b[0]) * max(0.0, caja_b[3] - caja_b[1])
+    union = area_a + area_b - interseccion
+    return interseccion / union if union else 0.0
+
+
+def filtrar_detecciones(detecciones: list[dict]) -> list[dict]:
+    """Elimina solo duplicados de la misma clase y marca conflictos entre clases.
+
+    Nunca elimina dos clases distintas: podrían ser objetos físicos diferentes
+    superpuestos. Esas predicciones quedan disponibles para revisión humana.
+    """
+    ordenadas = sorted(detecciones, key=lambda item: item["confianza"], reverse=True)
+    conservadas: list[dict] = []
+    for deteccion in ordenadas:
+        if any(
+            previa["clase"] == deteccion["clase"]
+            and _iou(previa["xyxy"], deteccion["xyxy"]) >= 0.85
+            for previa in conservadas
+        ):
+            continue
+        deteccion["dudosa"] = deteccion["confianza"] < 0.55
+        deteccion["conflicto"] = False
+        conservadas.append(deteccion)
+    for indice, deteccion in enumerate(conservadas):
+        for otra in conservadas[indice + 1:]:
+            if deteccion["clase"] != otra["clase"] and _iou(deteccion["xyxy"], otra["xyxy"]) >= 0.65:
+                deteccion["conflicto"] = otra["conflicto"] = True
+                deteccion["dudosa"] = otra["dudosa"] = True
+    return conservadas
 
 
 def procesar_imagen(
@@ -59,10 +135,10 @@ def procesar_imagen(
     if type(tamano) is not int or not 32 <= tamano <= 1280 or tamano % 32:
         raise ValueError("Tamaño de inferencia inválido en la ficha del modelo.")
     resultado = modelo.predict(source=imagen, device="cpu", conf=confianza, imgsz=tamano, save=False, verbose=False)[0]
-    detecciones = [
+    detecciones = filtrar_detecciones([
         {"clase": resultado.names[int(clase)], "confianza": float(puntuacion), "xyxy": [float(v) for v in caja]}
         for clase, puntuacion, caja in zip(resultado.boxes.cls.cpu().tolist(), resultado.boxes.conf.cpu().tolist(), resultado.boxes.xyxy.cpu().tolist())
-    ]
+    ])
     conteos = contar_por_clase(d["clase"] for d in detecciones)
     reporte = {
         "imagen": str(Path(imagen_path).resolve()), "sha256_imagen": sha256(Path(imagen_path)),

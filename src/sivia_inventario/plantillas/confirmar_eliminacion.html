@@ -1,0 +1,5 @@
+{% extends "base.html" %}
+{% block titulo %}Eliminar producto{% endblock %}
+{% block contenido %}
+<section class="confirmacion panel"><p class="sobretitulo">Inventario › Eliminar producto</p><h1>¿Deseas eliminar este producto?</h1><p>Se ocultará del inventario. El registro se conserva para no perder el historial asociado.</p><article>{% if producto.imagen_url %}<img class="foto-producto imagen-real" src="{{ producto.imagen_url }}" alt="{{ producto.producto }}">{% else %}<span class="foto-producto">▣</span>{% endif %}<div><strong>{{ producto.producto }}</strong><p>Código: {{ producto.id }}</p></div></article><form method="post" action="/inventario/{{ producto.id }}/eliminar"><a class="boton cancelar" href="/inventario">Cancelar</a><button class="boton peligro" type="submit">Eliminar</button></form></section>
+{% endblock %}

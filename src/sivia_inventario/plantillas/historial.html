@@ -1,1 +1,12 @@
-{% extends "base.html" %}{% block titulo %}Historial{% endblock %}{% block contenido %}<section class="titulo-pagina"><div><p class="sobretitulo">Evidencia y resultados</p><h1>Historial de verificaciones</h1><p>Consulta conteos guardados y sus fotografías de respaldo.</p></div></section><section class="panel estado-vacio"><span>◷</span><h2>No hay verificaciones guardadas</h2><p>Cuando el usuario guarde un resultado, aparecerá aquí con su evidencia.</p><a class="boton primario" href="/verificar">Verificar inventario</a></section>{% endblock %}
+{% extends "base.html" %}
+{% block titulo %}Historial{% endblock %}
+{% block contenido %}
+<p class="sobretitulo">Evidencia y resultados</p>
+<section class="titulo-pagina"><div><h1>Historial de verificaciones</h1><p>Cada fila representa una captura confirmada.</p></div><a class="boton primario" href="/verificar">Nueva verificación</a></section>
+{% if mensaje == 'guardado' %}<div class="mensaje-exito">Verificación guardada correctamente. El stock registrado no fue modificado.</div>{% endif %}
+{% if verificaciones %}
+<section class="panel tabla"><table><thead><tr><th>Verificación</th><th>Fecha</th><th>Evidencia</th><th>YOLO / confirmado</th><th>Productos confirmados</th><th>Diferencias</th><th></th></tr></thead><tbody>
+{% for item in verificaciones %}<tr><td><strong>{{ item.codigo }}</strong></td><td>{{ item.finalizada_en }}</td><td>{% if item.ruta_evidencia %}<a href="/evidencias/{{ item.ruta_evidencia.split('/')[-1] }}" target="_blank">Ver imagen</a>{% endif %}</td><td><strong>{{ item.objetos_yolo }}</strong> automático<br><strong>{{ item.objetos_confirmados }}</strong> confirmado</td><td>{{ item.productos_detectados }}</td><td>{{ item.diferencias }}</td><td><a class="boton secundario" href="/historial/{{ item.codigo }}">Ver detalle</a></td></tr>{% endfor %}
+</tbody></table></section>
+{% else %}<section class="panel estado-vacio"><h2>No hay verificaciones guardadas</h2><p>Cuando confirmes una detección aparecerá aquí con su evidencia.</p><a class="boton primario" href="/verificar">Verificar inventario</a></section>{% endif %}
+{% endblock %}

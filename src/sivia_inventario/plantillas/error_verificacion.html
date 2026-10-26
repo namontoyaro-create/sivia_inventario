@@ -1,0 +1,5 @@
+{% extends "base.html" %}
+{% block titulo %}Verificación no guardada{% endblock %}
+{% block contenido %}
+<section class="panel estado-vacio"><h1>La verificación no se guardó</h1><p>{{ error }}</p><p>Selecciona el producto exacto en al menos una fila de YOLO antes de confirmar. Esto no modifica el stock registrado.</p><a class="boton primario" href="/verificar">Volver a verificar inventario</a></section>
+{% endblock %}

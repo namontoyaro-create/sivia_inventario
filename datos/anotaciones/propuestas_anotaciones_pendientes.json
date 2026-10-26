@@ -1,0 +1,6 @@
+{
+  "version": 1,
+  "estado": "requiere_aprobacion_usuario",
+  "descripcion": "Solo conserva propuestas pendientes de revisión y aprobación humana.",
+  "imagenes": []
+}

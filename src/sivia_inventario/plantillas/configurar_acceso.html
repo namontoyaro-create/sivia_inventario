@@ -1,0 +1,6 @@
+{% extends "base.html" %}
+{% block titulo %}Configurar acceso{% endblock %}
+{% block extra_head %}<link rel="stylesheet" href="/static/acceso.css">{% endblock %}
+{% block contenido %}
+<section class="acceso"><div class="acceso-marca"><b>◉</b><h1>Bienvenida a SIVIA</h1><p>Crea la primera cuenta administradora para proteger el inventario.</p></div><form class="panel acceso-formulario" method="post" action="/configurar-acceso"><h2>Configurar administrador</h2><p>Esta cuenta podrá crear usuarios para operadores y auditores.</p>{% if error %}<p class="error">{{ error }}</p>{% endif %}<label>Nombre completo<input name="nombre" value="{{ valores.nombre|default('') }}" autocomplete="name" required></label><label>Usuario<input name="usuario" value="{{ valores.usuario|default('') }}" autocomplete="username" required></label><label>Contraseña<input name="contrasena" type="password" autocomplete="new-password" minlength="10" required></label><label>Confirmar contraseña<input name="confirmar_contrasena" type="password" autocomplete="new-password" minlength="10" required></label><button class="boton primario" type="submit">Crear acceso seguro</button></form></section>
+{% endblock %}

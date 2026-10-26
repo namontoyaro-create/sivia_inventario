@@ -24,12 +24,14 @@ Identificar y contar unidades visibles de productos de ferretería en imágenes 
 
 Estos componentes estarán separados para poder cambiar el detector sin modificar el catálogo ni las reglas del inventario.
 
-## Modos previstos
+## Modos de detección
 
 - **Catálogo / inventario:** detección de productos registrados de la empresa.
 - **Prueba libre:** búsqueda experimental de objetos mediante texto, utilizando posteriormente un detector de vocabulario abierto.
 
-El modo libre no dependerá del catálogo y sus resultados no modificarán automáticamente el inventario. Ambos modos de detección están pendientes de implementación. La prueba técnica con el modelo general preentrenado no es detección de vocabulario abierto.
+El modo Catálogo está disponible en la pantalla **Verificar inventario**: recibe una imagen, usa el modelo piloto local si existe, muestra únicamente las clases detectadas y permite confirmar el conteo antes de guardarlo. Una verificación no modifica el stock registrado.
+
+El modo Prueba libre está separado en `/prueba-libre` y no modifica inventario ni historial. Su interfaz está preparada, pero requiere instalar y validar un modelo open-vocabulary antes de poder identificar objetos mediante texto. El modelo YOLO piloto actual no es open-vocabulary y conoce solamente las ocho clases del catálogo.
 
 ## Catálogo inicial
 
@@ -139,20 +141,20 @@ Referencia del modelo: [documentación oficial de YOLO26](https://docs.ultralyti
 
 Las fotos originales se conservan en `datos/imagenes/`, organizadas por clase. El manifiesto `datos/anotaciones/ferreteria.json` registra sus dimensiones, huellas SHA-256, cajas y particiones.
 
-Para añadir propuestas de anotación para nuevas imágenes y generar una galería de revisión:
+Para revisar las fotos nuevas agregadas directamente a `datos/imagenes/` y generar una galería de propuestas:
 
 ```bash
-poetry run python -m sivia_inventario.dataset --proponer --revision
+poetry run python -m sivia_inventario.preparacion_v2 --galeria
 ```
 
-La galería se crea en `resultados/revision_anotaciones/index.html`. Las cajas con estado `propuesta_automatica` son aproximaciones y quedan bloqueadas para entrenamiento. Una propuesta debe revisarse y corregirse antes de marcarse como `revisada_usuario`.
+La galería se crea en `resultados/revision_anotaciones_pendientes/index.html`. Las cajas son propuestas y quedan bloqueadas para entrenamiento hasta su revisión y aprobación humana.
 
 El dataset actual sirve para probar el flujo, pero no valida conteo de inventario: contiene fotografías comerciales, no tiene un conjunto de prueba independiente y todavía incluye propuestas pendientes de revisión.
 
 Cuando todas las cajas estén revisadas, el comando de exportación genera copias para YOLO sin modificar los originales:
 
 ```bash
-poetry run python -m sivia_inventario.dataset --exportar --salida datos/dataset_yolo_v2
+poetry run python -m sivia_inventario.dataset --exportar --salida datos/entrenamiento/experimental/nuevo_dataset
 ```
 
 La exportación se detiene si encuentra una propuesta automática, una imagen duplicada, una caja inválida o una fuga entre entrenamiento y validación.
@@ -171,9 +173,9 @@ El resultado incluye una imagen anotada y un informe JSON en `resultados/detecci
 
 La interfaz necesita que la instalación de Python incluya Tcl/Tk. Si el equipo no lo tiene, se puede usar el comando de detección descrito abajo y abrir la imagen e informe generados.
 
-## Aplicación web: primera etapa
+## Aplicación web
 
-SIVIA incluye una aplicación web local responsive con un dashboard inicial y una base SQLite. La primera apertura crea `datos/sivia.db`, carga los ocho productos del catálogo y usa cantidades marcadas como **simuladas**. La base local no se sube a GitHub.
+SIVIA incluye una aplicación web local responsive con dashboard, inventario en SQLite y verificación experimental. La primera apertura crea `datos/sivia.db`, carga los ocho productos del catálogo y usa cantidades marcadas como **simuladas**. La base local no se sube a GitHub.
 
 Para iniciarla desde la raíz del proyecto:
 
@@ -181,7 +183,13 @@ Para iniciarla desde la raíz del proyecto:
 poetry run uvicorn sivia_inventario.web:app --reload
 ```
 
-Abre `http://127.0.0.1:8000` en el navegador. Esta etapa todavía no permite editar productos, usar la cámara ni procesar una imagen; esas funciones se implementarán de forma separada. La detección nunca actualiza automáticamente el stock registrado.
+Abre `http://127.0.0.1:8000` en el navegador. Inventario permite crear, editar, buscar, filtrar, ordenar, agregar fotografías y ocultar productos mediante confirmación. Verificar inventario permite subir evidencia o solicitar la cámara del navegador, revisar los resultados del modelo piloto y guardar solo productos confirmados dentro de una verificación `VER-0001`, `VER-0002`, etc. La detección nunca actualiza automáticamente el stock registrado.
+
+### Acceso de usuarios y modelo activo
+
+En la primera apertura SIVIA solicita crear la cuenta **Administradora**. No existen contraseñas predeterminadas. Desde **Usuarios** la administradora puede crear perfiles de **Operador de inventario** y **Auditor**. Cada perfil ve solo las herramientas correspondientes a su trabajo; las acciones de administración, entrenamiento y confirmación de movimientos quedan restringidas a administradores.
+
+La pantalla normal de **Verificar inventario** usa automáticamente el modelo activo de SIVIA, actualmente YOLO piloto v2 si su archivo está disponible. La selección y comparación de modelos se mantiene en `/verificar/tecnico` para pruebas autorizadas. Un conteo mostrado por YOLO corresponde únicamente a las cajas que el modelo detectó: una escena con varios candados puede requerir reentrenamiento con fotografías de estanterías anotadas individualmente.
 
 ## Ejecutar la visualización
 

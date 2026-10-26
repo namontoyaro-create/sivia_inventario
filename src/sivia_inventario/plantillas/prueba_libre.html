@@ -1,0 +1,5 @@
+{% extends "base.html" %}
+{% block titulo %}Modo prueba libre{% endblock %}
+{% block contenido %}
+<p class="sobretitulo">Experimental · Fuera del catálogo</p><section class="titulo-pagina"><div><h1>Modo prueba libre</h1><p>Explora objetos que no pertenecen al catálogo de SIVIA.</p></div><a class="boton secundario" href="/verificar">Volver a Inventario</a></section><section class="panel modo-libre"><h2>Modelo open-vocabulary pendiente de configurar</h2><p>Este modo está separado del inventario: no modifica stock, no registra verificaciones y no convierte resultados en productos del catálogo.</p><p>Para activarlo se debe elegir e instalar un modelo de detección de vocabulario abierto y validarlo con imágenes de prueba. El modelo YOLO actual solo conoce las ocho clases del catálogo.</p></section>
+{% endblock %}

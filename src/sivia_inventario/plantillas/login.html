@@ -1,0 +1,6 @@
+{% extends "base.html" %}
+{% block titulo %}Iniciar sesión{% endblock %}
+{% block extra_head %}<link rel="stylesheet" href="/static/acceso.css">{% endblock %}
+{% block contenido %}
+<section class="acceso"><div class="acceso-marca"><b>◉</b><h1>SIVIA</h1><p>Sistema de Visión para Inventario Automatizado</p></div><form class="panel acceso-formulario" method="post" action="/login"><h2>Iniciar sesión</h2><p>Accede con tu cuenta autorizada.</p>{% if error %}<p class="error">{{ error }}</p>{% endif %}<label>Usuario<input name="usuario" value="{{ usuario_ingresado|default('') }}" autocomplete="username" required autofocus></label><label>Contraseña<input name="contrasena" type="password" autocomplete="current-password" required></label><button class="boton primario" type="submit">Ingresar a SIVIA</button></form></section>
+{% endblock %}

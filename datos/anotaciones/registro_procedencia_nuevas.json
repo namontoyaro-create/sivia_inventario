@@ -1,0 +1,102 @@
+{
+  "version": 1,
+  "descripcion": "Registro de fotografías nuevas detectadas directamente en datos/imagenes. No modifica el manifiesto aprobado.",
+  "imagenes": [
+    {
+      "archivo": "datos/imagenes/candado/candado1.jpg",
+      "clase_ia": "candado",
+      "origen": "internet",
+      "grupo_escena": "candado_internet_lote_01"
+    },
+    {
+      "archivo": "datos/imagenes/candado/Candado2.jpg",
+      "clase_ia": "candado",
+      "origen": "internet",
+      "grupo_escena": "candado_internet_lote_02"
+    },
+    {
+      "archivo": "datos/imagenes/candado/candado3.jpg",
+      "clase_ia": "candado",
+      "origen": "internet",
+      "grupo_escena": "candado_internet_lote_03"
+    },
+    {
+      "archivo": "datos/imagenes/candado/candado4.jpg",
+      "clase_ia": "candado",
+      "origen": "internet",
+      "grupo_escena": "candado_internet_lote_04"
+    },
+    {
+      "archivo": "datos/imagenes/candado/candado5.jpg",
+      "clase_ia": "candado",
+      "origen": "internet",
+      "grupo_escena": "candado_internet_lote_05"
+    },
+    {
+      "archivo": "datos/imagenes/candado/candado6.jpg",
+      "clase_ia": "candado",
+      "origen": "internet",
+      "grupo_escena": "candado_internet_lote_06",
+      "observacion": "Resolución insuficiente para propuesta de anotación; conservar solo como referencia."
+    },
+    {
+      "archivo": "datos/imagenes/tuberia_pvc/tuvo1.jpg",
+      "clase_ia": "tuberia_pvc",
+      "origen": "origen_no_confirmado",
+      "grupo_escena": "tuberia_pvc_nueva_01"
+    },
+    {
+      "archivo": "datos/imagenes/tuberia_pvc/tuvo2.jpg",
+      "clase_ia": "tuberia_pvc",
+      "origen": "origen_no_confirmado",
+      "grupo_escena": "tuberia_pvc_nueva_02"
+    },
+    {
+      "archivo": "datos/imagenes/tuberia_pvc/tuvo3.jpg",
+      "clase_ia": "tuberia_pvc",
+      "origen": "origen_no_confirmado",
+      "grupo_escena": "tuberia_pvc_nueva_03",
+      "observacion": "Duplicado exacto de una imagen ya anotada; no reutilizar."
+    },
+    {
+      "archivo": "datos/imagenes/tuberia_pvc/tuvo4.jpg",
+      "clase_ia": "tuberia_pvc",
+      "origen": "origen_no_confirmado",
+      "grupo_escena": "tuberia_pvc_nueva_04",
+      "observacion": "Tubería PPR verde con accesorios; no corresponde de forma segura a la clase PVC."
+    },
+    {
+      "archivo": "datos/imagenes/tuberia_pvc/tuvo5.jpg",
+      "clase_ia": "tuberia_pvc",
+      "origen": "origen_no_confirmado",
+      "grupo_escena": "tuberia_pvc_nueva_05",
+      "observacion": "Tubería PPR verde; no corresponde de forma segura a la clase PVC."
+    },
+    {
+      "archivo": "datos/imagenes/tuberia_pvc/tuvo6.jpg",
+      "clase_ia": "tuberia_pvc",
+      "origen": "origen_no_confirmado",
+      "grupo_escena": "tuberia_pvc_nueva_06"
+    },
+    {
+      "archivo": "datos/imagenes/tuberia_pvc/tuvo7.jpg",
+      "clase_ia": "tuberia_pvc",
+      "origen": "origen_no_confirmado",
+      "grupo_escena": "tuberia_pvc_nueva_07"
+    },
+    {
+      "archivo": "datos/imagenes/tuberia_pvc/tuvo8.jpg",
+      "clase_ia": "tuberia_pvc",
+      "origen": "origen_no_confirmado",
+      "grupo_escena": "tuberia_pvc_nueva_08",
+      "observacion": "Varias tuberías superpuestas: el conteo individual requiere revisión humana."
+    },
+    {
+      "archivo": "datos/imagenes/tuberia_pvc/tuvo9.jpg",
+      "clase_ia": "tuberia_pvc",
+      "origen": "origen_no_confirmado",
+      "grupo_escena": "tuberia_pvc_nueva_09",
+      "observacion": "Numerosas tuberías solapadas: no proponer conteo sin revisión humana."
+    }
+  ]
+}

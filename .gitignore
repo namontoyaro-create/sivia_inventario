@@ -33,3 +33,15 @@ datos/dataset_yolo*/
 
 # Base de datos local de la aplicación web
 datos/sivia.db
+
+# Fotografías cargadas localmente desde Inventario
+datos/productos/
+
+# Evidencias locales de las verificaciones
+datos/evidencias/
+
+# Temporales de pruebas, respaldos operativos y datasets generados localmente
+.pytesttmp*/
+.tmp_*/
+datos/respaldos/
+datos/entrenamiento/

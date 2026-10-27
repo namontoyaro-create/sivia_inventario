@@ -93,6 +93,22 @@ def listar_usuarios(ruta: Path = RUTA_BASE_DATOS) -> list[Usuario]:
     return [_fila_usuario(fila) for fila in filas if fila]
 
 
+def identificar_administrador_local(ruta: Path = RUTA_BASE_DATOS) -> Usuario:
+    """Identifica la cuenta administradora solamente en la consola local.
+
+    No se expone mediante una ruta web ni por correo. El procedimiento exige
+    acceso al entorno de desarrollo y solo continúa si hay una sola cuenta
+    administradora activa, evitando elegir accidentalmente otra cuenta.
+    """
+    administradores = [item for item in listar_usuarios(ruta)
+                       if item.rol == "administrador" and item.activo]
+    if len(administradores) != 1:
+        raise ValueError(
+            "No hay una única cuenta administradora activa; revisa el acceso local con una persona autorizada."
+        )
+    return administradores[0]
+
+
 def obtener_usuario(usuario: str, ruta: Path = RUTA_BASE_DATOS) -> Usuario | None:
     with conectar(ruta) as conexion:
         fila = conexion.execute("SELECT id,usuario,nombre,rol,activo FROM usuarios WHERE usuario=?", (usuario.strip().lower(),)).fetchone()
@@ -149,7 +165,7 @@ def generar_codigo_recuperacion_local(usuario: str, ruta: Path = RUTA_BASE_DATOS
     return codigo, vence_en
 
 
-def restablecer_contrasena_con_codigo(usuario: str, codigo: str, nueva_contrasena: str,
+def restablecer_contrasena_con_codigo(codigo: str, nueva_contrasena: str, usuario: str = "",
                                       ruta: Path = RUTA_BASE_DATOS) -> None:
     """Restablece una clave si el c\u00f3digo local vigente no fue utilizado.
 
@@ -158,19 +174,20 @@ def restablecer_contrasena_con_codigo(usuario: str, codigo: str, nueva_contrasen
     """
     usuario_normalizado = usuario.strip().lower()
     mensaje_error = "No se pudo validar el usuario o el c\u00f3digo de recuperaci\u00f3n."
-    if not _USUARIO_VALIDO.fullmatch(usuario_normalizado) or not codigo.strip():
+    if (usuario_normalizado and not _USUARIO_VALIDO.fullmatch(usuario_normalizado)) or not codigo.strip():
         raise ValueError(mensaje_error)
+    filtro_usuario = "AND u.usuario=?" if usuario_normalizado else ""
     with conectar(ruta) as conexion:
         fila = conexion.execute(
-            """
+            f"""
             SELECT r.id AS recuperacion_id, r.vence_en, r.usada_en,
                    u.id, u.usuario, u.nombre, u.rol, u.activo
             FROM recuperaciones_contrasena r
             JOIN usuarios u ON u.id=r.usuario_id
-            WHERE u.usuario=? AND r.codigo_hash=?
+            WHERE r.codigo_hash=? {filtro_usuario}
             ORDER BY r.id DESC LIMIT 1
             """,
-            (usuario_normalizado, _huella_codigo(codigo)),
+            (_huella_codigo(codigo), usuario_normalizado) if usuario_normalizado else (_huella_codigo(codigo),),
         ).fetchone()
         if not fila or not bool(fila["activo"]) or fila["usada_en"]:
             raise ValueError(mensaje_error)

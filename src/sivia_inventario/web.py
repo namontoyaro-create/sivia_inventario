@@ -86,7 +86,7 @@ def contexto_global(request: Request) -> dict:
 
 plantillas = Jinja2Templates(directory=PLANTILLAS, context_processors=[contexto_global])
 
-RUTAS_PUBLICAS = {"/login", "/configurar-acceso", "/cerrar-sesion", "/recuperar-contrasena"}
+RUTAS_PUBLICAS = {"/login", "/configurar-acceso", "/cerrar-sesion", "/recuperar-contrasena", "/recuperar-acceso"}
 PREFIJOS_ESTATICOS = ("/static/", "/productos/", "/evidencias/", "/imagenes/", "/revision-pendiente/")
 
 
@@ -241,40 +241,45 @@ def iniciar_sesion(request: Request, usuario: str = Form(""), contrasena: str = 
     return RedirectResponse("/", status_code=303)
 
 
-@app.get("/recuperar-contrasena", response_class=HTMLResponse)
-def recuperar_contrasena(request: Request):
+@app.get("/recuperar-acceso", response_class=HTMLResponse)
+def recuperar_acceso(request: Request):
     if not existen_usuarios():
         return RedirectResponse("/configurar-acceso", status_code=303)
-    return plantillas.TemplateResponse(request, "recuperar_contrasena.html", {"pagina": "", "valores": {}})
+    return plantillas.TemplateResponse(request, "recuperar_acceso.html", {"pagina": ""})
 
 
+@app.get("/recuperar-contrasena")
+def redirigir_recuperacion_anterior():
+    """Mantiene enlaces existentes, pero usa la pantalla de acceso unificada."""
+    return RedirectResponse("/recuperar-acceso", status_code=303)
+
+
+@app.post("/recuperar-acceso", response_class=HTMLResponse)
 @app.post("/recuperar-contrasena", response_class=HTMLResponse)
 def guardar_contrasena_recuperada(
     request: Request,
-    usuario: str = Form(""),
     codigo_recuperacion: str = Form(""),
     nueva_contrasena: str = Form(""),
     confirmar_contrasena: str = Form(""),
 ):
-    valores = {"usuario": usuario}
     if nueva_contrasena != confirmar_contrasena:
         return plantillas.TemplateResponse(
-            request, "recuperar_contrasena.html",
-            {"pagina": "", "error": "Las contraseñas nuevas no coinciden.", "valores": valores},
+            request, "recuperar_acceso.html",
+            {"pagina": "", "error": "Las contraseñas nuevas no coinciden."},
             status_code=400,
         )
     try:
-        restablecer_contrasena_con_codigo(usuario, codigo_recuperacion, nueva_contrasena)
+        restablecer_contrasena_con_codigo(codigo_recuperacion, nueva_contrasena)
     except ValueError as error:
         REGISTRO.warning("Restablecimiento de contraseña rechazado para un usuario local: %s", error)
         return plantillas.TemplateResponse(
-            request, "recuperar_contrasena.html",
-            {"pagina": "", "error": str(error), "valores": valores}, status_code=400,
+            request, "recuperar_acceso.html",
+            {"pagina": "", "error": str(error)}, status_code=400,
         )
     request.session.clear()
     return plantillas.TemplateResponse(
-        request, "recuperar_contrasena.html",
-        {"pagina": "", "mensaje": "Contraseña restablecida. Ya puedes iniciar sesión con tu nueva contraseña.", "valores": {}},
+        request, "recuperar_acceso.html",
+        {"pagina": "", "mensaje": "Contraseña restablecida. Ya puedes iniciar sesión con tu nueva contraseña."},
     )
 
 

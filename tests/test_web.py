@@ -6,9 +6,8 @@ from sivia_inventario.web import app
 def test_recuperacion_contrasena_es_publica_y_exige_codigo_local():
     with TestClient(app) as cliente:
         pagina_login = cliente.get("/login")
-        pagina_recuperacion = cliente.get("/recuperar-contrasena")
-        intento = cliente.post("/recuperar-contrasena", data={
-            "usuario": "cuenta-inexistente",
+        pagina_recuperacion = cliente.get("/recuperar-acceso")
+        intento = cliente.post("/recuperar-acceso", data={
             "codigo_recuperacion": "codigo-invalido",
             "nueva_contrasena": "ClaveSegura12",
             "confirmar_contrasena": "ClaveSegura12",
@@ -17,7 +16,9 @@ def test_recuperacion_contrasena_es_publica_y_exige_codigo_local():
     assert pagina_login.status_code == 200
     assert "Olvidaste" in pagina_login.text
     assert pagina_recuperacion.status_code == 200
-    assert "C&oacute;digo" in pagina_recuperacion.text or "Código" in pagina_recuperacion.text
+    assert "Recuperar acceso a SIVIA" in pagina_recuperacion.text
+    assert "Olvid" in pagina_recuperacion.text
+    assert "usuario" in pagina_recuperacion.text
     assert intento.status_code == 400
     assert "No se pudo validar" in intento.text
 

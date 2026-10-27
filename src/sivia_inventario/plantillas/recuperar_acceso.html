@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block titulo %}Recuperar acceso{% endblock %}
+{% block extra_head %}<link rel="stylesheet" href="/static/acceso.css">{% endblock %}
+{% block contenido %}
+<section class="acceso acceso-recuperacion">
+  <div class="acceso-marca">
+    <b>&#9673;</b><h1>SIVIA</h1>
+    <p>Recuperaci&oacute;n segura de acceso local.</p>
+    <p class="acceso-nota">La recuperaci&oacute;n requiere acceso autorizado al equipo de desarrollo. No se env&iacute;an claves por correo ni se exponen usuarios desde Internet.</p>
+  </div>
+  <section class="panel acceso-formulario recuperacion-panel" aria-labelledby="titulo-recuperacion">
+    <h2 id="titulo-recuperacion">Recuperar acceso a SIVIA</h2>
+    <p>Selecciona lo que olvidaste para seguir el procedimiento seguro.</p>
+    {% if error %}<p class="error">{{ error }}</p>{% endif %}
+    {% if mensaje %}<p class="mensaje-exito">{{ mensaje }}</p>{% endif %}
+    <div class="opciones-recuperacion" role="tablist" aria-label="Opciones de recuperación">
+      <button type="button" class="opcion-recuperacion" data-opcion="usuario" role="tab" aria-selected="false">Olvid&eacute; mi usuario</button>
+      <button type="button" class="opcion-recuperacion activo" data-opcion="contrasena" role="tab" aria-selected="true">Olvid&eacute; mi contrase&ntilde;a</button>
+    </div>
+    <div class="paso-recuperacion" data-paso="usuario" hidden>
+      <h3>Identificar mi usuario localmente</h3>
+      <p>En la terminal de VS Code, dentro del proyecto, ejecuta:</p>
+      <code>poetry run python -m sivia_inventario.generar_codigo_recuperacion --identificar-administrador</code>
+      <p>La consola pedir&aacute; confirmar <strong>IDENTIFICAR tu_usuario</strong>. Solo si existe una &uacute;nica cuenta administradora activa mostrar&aacute; ese usuario localmente. No muestra otras cuentas en la web.</p>
+      <button type="button" class="boton secundario" data-ir-contrasena>Ya tengo mi c&oacute;digo de recuperaci&oacute;n</button>
+    </div>
+    <form method="post" action="/recuperar-acceso" class="paso-recuperacion" data-paso="contrasena">
+      <h3>Restablecer contrase&ntilde;a</h3>
+      <p>Genera el c&oacute;digo temporal desde VS Code con <code>--administrador</code>. El c&oacute;digo identifica la cuenta autorizada, por lo que no necesitas escribir el usuario aqu&iacute;.</p>
+      <label>C&oacute;digo de recuperaci&oacute;n<input name="codigo_recuperacion" autocomplete="one-time-code" spellcheck="false" required autofocus></label>
+      <label>Nueva contrase&ntilde;a<span class="campo-clave"><input name="nueva_contrasena" type="password" autocomplete="new-password" minlength="10" required><button type="button" data-ver-clave aria-label="Mostrar nueva contrase&ntilde;a">Ver</button></span></label>
+      <label>Confirmar nueva contrase&ntilde;a<span class="campo-clave"><input name="confirmar_contrasena" type="password" autocomplete="new-password" minlength="10" required><button type="button" data-ver-clave aria-label="Mostrar confirmaci&oacute;n de contrase&ntilde;a">Ver</button></span></label>
+      <button class="boton primario" type="submit">Restablecer contrase&ntilde;a</button>
+    </form>
+    <p class="acceso-enlace"><a href="/login">&larr; Volver a iniciar sesi&oacute;n</a></p>
+  </section>
+</section>
+<script>
+(function () {
+  var botones = document.querySelectorAll('[data-opcion]');
+  var pasos = document.querySelectorAll('[data-paso]');
+  function mostrar(opcion) {
+    botones.forEach(function (boton) {
+      var activo = boton.dataset.opcion === opcion;
+      boton.classList.toggle('activo', activo);
+      boton.setAttribute('aria-selected', activo ? 'true' : 'false');
+    });
+    pasos.forEach(function (paso) { paso.hidden = paso.dataset.paso !== opcion; });
+  }
+  botones.forEach(function (boton) { boton.addEventListener('click', function () { mostrar(boton.dataset.opcion); }); });
+  document.querySelectorAll('[data-ir-contrasena]').forEach(function (boton) { boton.addEventListener('click', function () { mostrar('contrasena'); }); });
+  document.querySelectorAll('[data-ver-clave]').forEach(function (boton) {
+    boton.addEventListener('click', function () {
+      var campo = boton.parentElement.querySelector('input');
+      var mostrarClave = campo.type === 'password';
+      campo.type = mostrarClave ? 'text' : 'password';
+      boton.textContent = mostrarClave ? 'Ocultar' : 'Ver';
+    });
+  });
+}());
+</script>
+{% endblock %}

@@ -272,13 +272,22 @@ def actualizar_mi_contrasena(request: Request, contrasena_actual: str = Form("")
 
 @app.get("/", response_class=HTMLResponse)
 def inicio(request: Request):
-    return plantillas.TemplateResponse(request, "inicio.html", {"pagina": "inicio", "resumen": resumen_dashboard(), "categorias_stock": stock_por_categoria()})
+    productos = listar_productos()
+    resumen = resumen_dashboard()
+    resumen["stock_bajo"] = sum(p.stock_registrado <= p.stock_minimo for p in productos)
+    resumen["agotados"] = sum(p.stock_registrado == 0 for p in productos)
+    movimientos = listar_movimientos()[:5]
+    verificaciones = listar_sesiones_verificacion()[:5]
+    return plantillas.TemplateResponse(request, "inicio.html", {
+        "pagina": "inicio", "resumen": resumen, "categorias_stock": stock_por_categoria(),
+        "movimientos_recientes": movimientos, "verificaciones_recientes": verificaciones,
+    })
 
 
 @app.get("/inventario", response_class=HTMLResponse)
 def inventario(request: Request, mensaje: str | None = None):
     productos = [producto_contexto(p) for p in listar_productos()]
-    return plantillas.TemplateResponse(request, "inventario.html", {"pagina": "inventario", "productos": productos, "total_stock": sum(p["stock_registrado"] for p in productos), "categorias": len(listar_categorias()), "stock_bajo": sum(p["stock_registrado"] < 10 for p in productos), "categorias_lista": listar_categorias(), "presentaciones_lista": listar_presentaciones(), "mensaje": mensaje})
+    return plantillas.TemplateResponse(request, "inventario.html", {"pagina": "inventario", "productos": productos, "total_stock": sum(p["stock_registrado"] for p in productos), "categorias": len(listar_categorias()), "stock_bajo": sum(p["stock_registrado"] <= p["stock_minimo"] for p in productos), "categorias_lista": listar_categorias(), "presentaciones_lista": listar_presentaciones(), "mensaje": mensaje})
 
 
 def formulario(request, titulo, accion, valores=None, error=None, bloqueado=False):

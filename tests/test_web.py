@@ -9,14 +9,14 @@ def test_inicio_muestra_resumen_simulado():
 
     assert respuesta.status_code == 200
     assert "SIVIA" in respuesta.text
-    assert "Datos de prueba" in respuesta.text
+    assert "Centro de control" in respuesta.text
     assert "Productos registrados" in respuesta.text
 
 
 def test_paginas_principales_no_muestran_anotaciones_del_dataset():
     with TestClient(app) as cliente:
         paginas = [
-            ("/inventario", "Categoría IA"),
+                ("/inventario", "Inventario de productos"),
             ("/verificar", "Cámara lista"),
             ("/historial", "Historial de verificaciones"),
             ("/alertas", "Alertas"),

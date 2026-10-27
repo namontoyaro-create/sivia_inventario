@@ -133,8 +133,18 @@ app.add_middleware(
 
 
 def url_imagen(ruta: str | None) -> str | None:
-    """Convierte una ruta relativa guardada en SQLite en una URL local."""
-    return f"/productos/{Path(ruta).name}" if ruta else None
+    """Convierte rutas locales permitidas en URL servida por FastAPI."""
+    if not ruta:
+        return None
+    archivo = Path(str(ruta).replace("\\", "/"))
+    partes = archivo.parts
+    if "productos" in partes:
+        return f"/productos/{archivo.name}"
+    if "imagenes" in partes:
+        indice = partes.index("imagenes")
+        relativo = Path(*partes[indice + 1:]).as_posix()
+        return f"/imagenes/{relativo}"
+    return None
 
 
 def producto_contexto(producto):

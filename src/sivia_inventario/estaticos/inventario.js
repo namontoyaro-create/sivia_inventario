@@ -3,6 +3,8 @@
   const categoria = document.querySelector('#filtro-categoria');
   const presentacion = document.querySelector('#filtro-presentacion');
   const orden = document.querySelector('#orden-productos');
+  const estado = document.querySelector('#filtro-estado');
+  const limpiar = document.querySelector('#limpiar-filtros');
   const cuerpo = document.querySelector('#filas-productos');
   if (!buscar || !cuerpo) return;
   const contador = document.querySelector('#contador-productos');
@@ -13,9 +15,10 @@
     const texto = normalizar(buscar.value).trim();
     const familia = normalizar(categoria.value);
     const tipo = normalizar(presentacion.value);
+    const estadoSeleccionado = normalizar(estado?.value);
     const visibles = filas.filter((fila) => {
       const coincideTexto = !texto || ['codigo', 'producto', 'categoria', 'clase'].some((dato) => fila.dataset[dato].includes(texto));
-      return coincideTexto && (!familia || fila.dataset.categoria === familia) && (!tipo || fila.dataset.presentacion === tipo);
+      return coincideTexto && (!familia || fila.dataset.categoria === familia) && (!tipo || fila.dataset.presentacion === tipo) && (!estadoSeleccionado || fila.dataset.estado === estadoSeleccionado);
     });
     const comparadores = {
       codigo: (a, b) => a.dataset.codigo.localeCompare(b.dataset.codigo),
@@ -29,7 +32,8 @@
     contador.textContent = visibles.length;
     vacio.hidden = visibles.length !== 0;
   }
-  [buscar, categoria, presentacion, orden].forEach((control) => control.addEventListener('input', actualizar));
-  [categoria, presentacion, orden].forEach((control) => control.addEventListener('change', actualizar));
+  [buscar, categoria, presentacion, orden, estado].filter(Boolean).forEach((control) => control.addEventListener('input', actualizar));
+  [categoria, presentacion, orden, estado].filter(Boolean).forEach((control) => control.addEventListener('change', actualizar));
+  limpiar?.addEventListener('click', () => { buscar.value = ''; categoria.value = ''; presentacion.value = ''; orden.value = 'codigo'; if (estado) estado.value = ''; actualizar(); });
   actualizar();
 })();

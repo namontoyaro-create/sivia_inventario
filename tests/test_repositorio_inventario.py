@@ -113,3 +113,15 @@ def test_rechaza_sku_y_codigo_barras_duplicados(tmp_path):
         crear_producto("P903", "Demo 2", "Prueba", "candado", "Unidad", 0, ruta, sku="SKU-902")
     with pytest.raises(ValueError, match="barras"):
         crear_producto("P903", "Demo 2", "Prueba", "candado", "Unidad", 0, ruta, codigo_barras="12345678")
+
+
+
+def test_vincula_fotografias_locales_revisadas_sin_tocar_stock(tmp_path):
+    from sivia_inventario.repositorio_inventario import vincular_fotografias_catalogo, listar_productos
+    ruta = tmp_path / "sivia.db"; inicializar_base_datos(ruta)
+    stock_inicial = {producto.id: producto.stock_registrado for producto in listar_productos(ruta)}
+    resultado = vincular_fotografias_catalogo(ruta)
+    productos = {producto.id: producto for producto in listar_productos(ruta)}
+    assert set(resultado["vinculados"]) == set(productos)
+    assert all(producto.imagen_ruta and producto.imagen_ruta.startswith("datos/imagenes/") for producto in productos.values())
+    assert {producto.id: producto.stock_registrado for producto in productos.values()} == stock_inicial

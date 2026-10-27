@@ -7,7 +7,7 @@ from pathlib import Path
 import re
 from uuid import uuid4
 
-from sivia_inventario.base_datos import RUTA_BASE_DATOS, conectar
+from sivia_inventario.base_datos import RAIZ, RUTA_BASE_DATOS, conectar
 
 
 @dataclass(frozen=True)
@@ -36,6 +36,17 @@ class ProductoInventario:
 
 
 ESTADOS_PRODUCTO = {"activo", "inactivo", "descontinuado"}
+
+FOTOGRAFIAS_CATALOGO_VERIFICADAS = {
+    "bolsa_clavos": "datos/imagenes/bolsa_clavos/bolsa_clavos_01.jpg",
+    "caja_clavos": "datos/imagenes/caja_clavos/caja_clavos_01.jpg",
+    "candado": "datos/imagenes/candado/candado_01.jpg",
+    "cerradura_sobreponer": "datos/imagenes/cerradura_sobreponer/cerradura_sobreponer_01.jpg",
+    "tuberia_pvc": "datos/imagenes/tuberia_pvc/tuberia_pvc_01.jpg",
+    "bolsa_cemento": "datos/imagenes/bolsa_cemento/bolsa_cemento_01.jpg",
+    "disco_corte": "datos/imagenes/disco_corte/disco_corte_01.jpg",
+    "caja_discos_corte": "datos/imagenes/caja_discos_corte/caja_discos_corte_11.jpg",
+}
 
 
 def _texto_opcional(valor, campo: str, maximo: int) -> str | None:
@@ -205,6 +216,31 @@ def listar_presentaciones(ruta: Path = RUTA_BASE_DATOS) -> list[str]:
             "SELECT DISTINCT presentacion FROM productos WHERE activo=1 ORDER BY presentacion"
         ).fetchall()
     return [fila["presentacion"] for fila in filas]
+
+
+def vincular_fotografias_catalogo(ruta: Path = RUTA_BASE_DATOS) -> dict[str, list[str]]:
+    """Vincula solo las fotos locales revisadas que corresponden a cada clase IA.
+
+    No reemplaza una foto cargada por el usuario ni descarga archivos externos.
+    """
+    vinculados: list[str] = []
+    sin_foto: list[str] = []
+    conservados: list[str] = []
+    with conectar(ruta) as conexion:
+        productos = conexion.execute(
+            "SELECT id, clase_ia, imagen_ruta FROM productos WHERE activo=1 ORDER BY id"
+        ).fetchall()
+        for producto in productos:
+            if producto["imagen_ruta"]:
+                conservados.append(producto["id"])
+                continue
+            imagen = FOTOGRAFIAS_CATALOGO_VERIFICADAS.get(producto["clase_ia"])
+            if not imagen or not (RAIZ / imagen).is_file():
+                sin_foto.append(producto["id"])
+                continue
+            conexion.execute("UPDATE productos SET imagen_ruta=? WHERE id=?", (imagen, producto["id"]))
+            vinculados.append(producto["id"])
+    return {"vinculados": vinculados, "sin_foto": sin_foto, "conservados": conservados}
 
 
 def eliminar_producto(codigo: str, ruta: Path = RUTA_BASE_DATOS) -> None:

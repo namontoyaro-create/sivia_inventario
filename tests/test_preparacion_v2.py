@@ -90,3 +90,23 @@ def test_registrar_aprobaciones_conserva_clase_y_procedencia(tmp_path, monkeypat
     assert registrado["estado"] == "revisada_usuario"
     assert registrado["origen"] == "internet"
     assert registrado["objetos"][0]["clase"] == "candado"
+
+
+def test_registrar_aprobaciones_conserva_split_propuesto_para_nueva_foto(tmp_path):
+    archivo = "datos/imagenes/candado/escena_reservada_test.jpg"
+    imagen = tmp_path / archivo
+    imagen.parent.mkdir(parents=True)
+    assert cv2.imwrite(str(imagen), np.full((20, 30, 3), 100, dtype=np.uint8))
+    manifiesto = tmp_path / "manifiesto.json"
+    manifiesto.write_text(json.dumps({"imagenes": []}), encoding="utf-8")
+    propuestas = tmp_path / "propuestas.json"
+    propuestas.write_text(json.dumps({"imagenes": [{
+        "archivo": archivo, "origen": "prueba_fisica", "grupo_escena": "escena_test",
+        "split_propuesto": "test",
+        "objetos": [{"clase": "candado", "xyxy": [0.1, 0.1, 0.9, 0.9]}],
+    }]}), encoding="utf-8")
+
+    registrar_aprobaciones({archivo}, manifiesto, propuestas, tmp_path)
+
+    registrado = json.loads(manifiesto.read_text(encoding="utf-8"))["imagenes"][0]
+    assert registrado["split"] == "test"

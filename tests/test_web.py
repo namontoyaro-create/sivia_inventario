@@ -96,10 +96,10 @@ def test_resultado_baja_confianza_no_afirma_producto_desconocido():
     assert "19.6%" in pagina
 
 
-def test_entrenamiento_ia_muestra_propuestas_pendientes():
+def test_entrenamiento_ia_muestra_pantalla_de_revision():
     with TestClient(app) as cliente:
         respuesta = cliente.get("/entrenamiento-ia")
 
     assert respuesta.status_code == 200
     assert "Entrenamiento IA" in respuesta.text
-    assert "No hay propuestas pendientes" in respuesta.text
+    assert "Plan de mejora del dataset" in respuesta.text

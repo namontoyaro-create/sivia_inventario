@@ -213,7 +213,10 @@ def registrar_aprobaciones(
             continue
         if archivo in existentes:
             raise ValueError(f"La imagen ya está registrada en el manifiesto: {archivo}")
-        if archivo not in SPLITS_APROBACIONES:
+        # La propuesta registra su destino antes de la revisión. La lista
+        # histórica se mantiene únicamente como respaldo de propuestas antiguas.
+        split = SPLITS_APROBACIONES.get(archivo, propuesta.get("split_propuesto"))
+        if split not in SPLITS_VALIDOS:
             raise ValueError(f"No hay una asignación de split segura para: {archivo}")
         objetos = propuesta.get("objetos", [])
         if not objetos or any(objeto.get("clase") not in CLASES for objeto in objetos):
@@ -231,7 +234,7 @@ def registrar_aprobaciones(
             "procedencia_documentada": origen != "origen_no_confirmado",
             "estado": "revisada_usuario",
             "tipo_fuente": "apoyo_comercial" if origen == "internet" else "origen_no_confirmado",
-            "split": SPLITS_APROBACIONES[archivo],
+            "split": split,
             "grupo": propuesta["grupo_escena"],
             "objetos": objetos,
             "motivo": "Rectángulos aprobados explícitamente para preparación del siguiente entrenamiento.",

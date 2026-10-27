@@ -6,12 +6,19 @@ import json
 from pathlib import Path
 import shutil
 
-from sivia_inventario.dataset import RAIZ, auditar, sha256, validar_caja
+from sivia_inventario.dataset import RAIZ, auditar, resolver_ruta_controlada, sha256, validar_caja
+
+
+def ruta_configuracion_entrenamiento(config: str | Path) -> Path:
+    """Acepta solo configuraciones de datasets exportados por SIVIA."""
+    return resolver_ruta_controlada(
+        config, RAIZ, "datos/entrenamiento", extensiones={".yaml", ".yml"}
+    )
 
 
 def verificar_exportacion(config: Path) -> dict:
     """Comprueba que las imágenes y etiquetas exportadas corresponden al manifiesto."""
-    config = config.resolve()
+    config = ruta_configuracion_entrenamiento(config)
     datos = json.loads(config.read_text(encoding="utf-8"))
     carpeta = config.parent
     if Path(datos.get("path", "")).resolve() != carpeta:
@@ -55,7 +62,8 @@ def main() -> None:
     if not 1 <= args.epocas <= 300 or not 32 <= args.tamano <= 1280 or args.tamano % 32:
         parser.error("Épocas: 1–300. Tamaño: múltiplo de 32 entre 32 y 1280.")
     try:
-        informe = verificar_exportacion(args.datos)
+        datos_seguro = ruta_configuracion_entrenamiento(args.datos)
+        informe = verificar_exportacion(datos_seguro)
         from ultralytics import YOLO, __version__ as version_yolo
         import torch
 
@@ -69,7 +77,7 @@ def main() -> None:
             print(aviso, flush=True)
         modelo = YOLO(str(RAIZ / "modelos/yolo26n.pt"))
         modelo.train(
-            data=str(args.datos.resolve()), epochs=args.epocas, imgsz=args.tamano,
+            data=str(datos_seguro), epochs=args.epocas, imgsz=args.tamano,
             batch=4, nbs=4, optimizer="AdamW", lr0=0.001,
             device="cpu", workers=0, amp=False, cache=False,
             seed=42, deterministic=True, freeze=10, patience=25,

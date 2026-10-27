@@ -19,6 +19,70 @@ MANIFIESTO = RAIZ / "datos/anotaciones/ferreteria.json"
 EXTENSIONES_IMAGEN = {".bmp", ".jpeg", ".jpg", ".png", ".tif", ".tiff", ".webp"}
 
 
+def resolver_ruta_controlada(
+    ruta: str | Path,
+    raiz: Path = RAIZ,
+    directorio_autorizado: str | Path = ".",
+    *,
+    extensiones: set[str] | None = None,
+    debe_existir: bool = True,
+) -> Path:
+    """Resuelve una ruta únicamente dentro de una zona autorizada del proyecto.
+
+    Las rutas externas, ``..`` y cualquier enlace simbólico del recorrido se
+    rechazan. Las rutas absolutas solo son admisibles si ya se encuentran en la
+    zona autorizada; nunca se usan para salir del proyecto.
+    """
+    base = Path(raiz).resolve()
+    permitido = (base / directorio_autorizado).resolve()
+    entrada = Path(ruta)
+    if ".." in entrada.parts:
+        raise ValueError("No se permiten secuencias '..' en rutas de SIVIA.")
+    candidata_sin_resolver = entrada if entrada.is_absolute() else base / entrada
+    try:
+        candidata_absoluta = candidata_sin_resolver.absolute()
+        relativa = candidata_absoluta.relative_to(permitido)
+    except ValueError as error:
+        raise ValueError("La ruta está fuera del directorio autorizado de SIVIA.") from error
+
+    actual = permitido
+    for parte in relativa.parts:
+        actual = actual / parte
+        if actual.is_symlink():
+            raise ValueError("No se permiten enlaces simbólicos en rutas de SIVIA.")
+    try:
+        candidata = candidata_sin_resolver.resolve(strict=False)
+    except OSError as error:
+        raise ValueError("No se pudo resolver la ruta solicitada.") from error
+    if not candidata.is_relative_to(permitido):
+        raise ValueError("La ruta resuelta está fuera del directorio autorizado de SIVIA.")
+    if extensiones is not None and candidata.suffix.lower() not in extensiones:
+        raise ValueError("La extensión del archivo no está permitida.")
+    if debe_existir and not candidata.is_file():
+        raise ValueError("El archivo autorizado no existe o no es un archivo regular.")
+    return candidata
+
+
+def ruta_manifiesto_controlada(manifiesto: str | Path, raiz: Path = RAIZ) -> Path:
+    ruta = resolver_ruta_controlada(manifiesto, raiz, "datos", extensiones={".json"})
+    raiz_resuelta = Path(raiz).resolve()
+    permitidos = (
+        (raiz_resuelta / "datos/anotaciones").resolve(),
+        (raiz_resuelta / "datos/entrenamiento").resolve(),
+    )
+    if not any(ruta.is_relative_to(directorio) for directorio in permitidos):
+        raise ValueError("El manifiesto debe estar en datos/anotaciones o datos/entrenamiento.")
+    return ruta
+
+
+def ruta_imagen_controlada(archivo: object, raiz: Path = RAIZ) -> Path:
+    if not isinstance(archivo, str) or not archivo.strip():
+        raise ValueError("Cada imagen debe indicar una ruta relativa válida.")
+    return resolver_ruta_controlada(
+        archivo, raiz, "datos/imagenes", extensiones=EXTENSIONES_IMAGEN
+    )
+
+
 def sha256(ruta: Path) -> str:
     return hashlib.sha256(ruta.read_bytes()).hexdigest()
 
@@ -62,7 +126,8 @@ def proponer_caja(imagen) -> list[float]:
 
 def proponer_anotaciones(manifiesto: Path = MANIFIESTO, raiz: Path = RAIZ) -> int:
     """Añade propuestas para imágenes nuevas, sin cambiar las ya anotadas."""
-    ruta_manifiesto = Path(manifiesto)
+    raiz = Path(raiz).resolve()
+    ruta_manifiesto = ruta_manifiesto_controlada(manifiesto, raiz)
     datos = json.loads(ruta_manifiesto.read_text(encoding="utf-8"))
     clases = [producto.clase_ia for producto in CATALOGO]
     existentes = {entrada["archivo"] for entrada in datos["imagenes"]}
@@ -80,7 +145,7 @@ def proponer_anotaciones(manifiesto: Path = MANIFIESTO, raiz: Path = RAIZ) -> in
             ruta_relativa = imagen_path.relative_to(raiz).as_posix()
             if ruta_relativa in existentes:
                 continue
-            imagen = cargar_imagen(imagen_path)
+            imagen = cargar_imagen(ruta_imagen_controlada(ruta_relativa, raiz))
             alto, ancho = imagen.shape[:2]
             numero = sum(1 for entrada in datos["imagenes"] if entrada.get("objetos") and entrada["objetos"][0].get("clase") == clase)
             grupo = f"{clase}_{imagen_path.stem}"
@@ -89,7 +154,7 @@ def proponer_anotaciones(manifiesto: Path = MANIFIESTO, raiz: Path = RAIZ) -> in
             datos["imagenes"].append(
                 {
                     "archivo": ruta_relativa,
-                    "sha256": sha256(imagen_path),
+                    "sha256": sha256(ruta_imagen_controlada(ruta_relativa, raiz)),
                     "ancho": ancho,
                     "alto": alto,
                     "origen": "aportada_por_usuario",
@@ -154,21 +219,22 @@ def auditar(
     raiz: Path = RAIZ,
     permitir_propuestas: bool = False,
 ) -> tuple[dict, dict]:
-    datos = json.loads(Path(manifiesto).read_text(encoding="utf-8"))
+    raiz = Path(raiz).resolve()
+    ruta_manifiesto = ruta_manifiesto_controlada(manifiesto, raiz)
+    datos = json.loads(ruta_manifiesto.read_text(encoding="utf-8"))
     clases = [p.clase_ia for p in CATALOGO]
     if datos.get("version") != 1 or datos.get("clases") != clases:
         raise ValueError("Versión o clases del manifiesto incompatibles con el catálogo.")
     if not isinstance(datos.get("imagenes"), list) or not datos["imagenes"]:
         raise ValueError("El manifiesto no contiene imágenes.")
-    raiz = raiz.resolve()
     rutas, hashes, grupos = set(), {}, {}
     conteos = {s: Counter() for s in ("train", "val", "test")}
     numero_imagenes = Counter()
     excluidas = []
     propuestas = []
     for e in datos["imagenes"]:
-        ruta = (raiz / e["archivo"]).resolve()
-        if not ruta.is_relative_to(raiz) or ruta in rutas:
+        ruta = ruta_imagen_controlada(e.get("archivo"), raiz)
+        if ruta in rutas:
             raise ValueError("Ruta fuera del proyecto o repetida.")
         rutas.add(ruta)
         if sha256(ruta) != e.get("sha256"):
@@ -231,14 +297,18 @@ def auditar(
         "excluidas": excluidas,
         "propuestas_pendientes": propuestas,
         "advertencias": avisos,
-        "sha256_manifiesto": sha256(Path(manifiesto)),
+        "sha256_manifiesto": sha256(ruta_manifiesto),
     }
     return datos, informe
 
 
 def exportar(manifiesto: Path, salida: Path, raiz: Path = RAIZ) -> Path:
+    raiz = Path(raiz).resolve()
     datos, informe = auditar(manifiesto, raiz)
-    salida = salida.resolve()
+    ruta_manifiesto = ruta_manifiesto_controlada(manifiesto, raiz)
+    salida = resolver_ruta_controlada(
+        salida, raiz, "datos/entrenamiento", debe_existir=False
+    )
     if salida.exists():
         raise FileExistsError("La salida ya existe. Use --salida con una carpeta nueva; no se borrará nada.")
     salida.mkdir(parents=True)
@@ -248,7 +318,7 @@ def exportar(manifiesto: Path, salida: Path, raiz: Path = RAIZ) -> Path:
     for e in datos["imagenes"]:
         if e["estado"] == "excluida":
             continue
-        origen = raiz / e["archivo"]
+        origen = ruta_imagen_controlada(e["archivo"], raiz)
         nombre = f"{e['sha256'][:12]}_{origen.stem}"
         destino = salida / "images" / e["split"] / (nombre + origen.suffix.lower())
         shutil.copy2(origen, destino)
@@ -265,16 +335,18 @@ def exportar(manifiesto: Path, salida: Path, raiz: Path = RAIZ) -> Path:
     # JSON es un subconjunto de YAML: evita otra dependencia directa.
     (salida / "data.yaml").write_text(json.dumps(config, indent=2) + "\n", encoding="utf-8")
     (salida / "informe.json").write_text(json.dumps(informe, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    shutil.copy2(manifiesto, salida / "anotaciones.json")
+    shutil.copy2(ruta_manifiesto, salida / "anotaciones.json")
     return salida / "data.yaml"
 
 
 def generar_revision(manifiesto: Path, salida: Path, raiz: Path = RAIZ) -> Path:
+    raiz = Path(raiz).resolve()
     datos, informe = auditar(manifiesto, raiz, permitir_propuestas=True)
+    salida = resolver_ruta_controlada(salida, raiz, "resultados", debe_existir=False)
     salida.mkdir(parents=True, exist_ok=True)
     tarjetas = []
     for i, e in enumerate(datos["imagenes"]):
-        imagen = cargar_imagen(raiz / e["archivo"])
+        imagen = cargar_imagen(ruta_imagen_controlada(e["archivo"], raiz))
         h, w = imagen.shape[:2]
         for obj in e["objetos"]:
             x1, y1, x2, y2 = obj["xyxy"]

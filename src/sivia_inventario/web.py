@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 import logging
 import os
 from pathlib import Path
+import secrets
 import shutil
 import tempfile
 from uuid import uuid4
@@ -32,6 +33,7 @@ from sivia_inventario.preparacion_v2 import (
 from sivia_inventario.repositorio_inventario import (MovimientoNoDisponible, actualizar_producto, buscar_productos_voz, confirmar_movimiento, crear_producto, crear_solicitud_movimiento, eliminar_producto, guardar_verificacion, listar_alertas, listar_categorias, listar_movimientos, listar_presentaciones, listar_productos, listar_productos_por_clase, listar_sesiones_verificacion, obtener_sesion_verificacion, obtener_producto, resumen_dashboard, stock_por_categoria, actividad_dashboard)
 from sivia_inventario.asistente_voz_logica import interpretar_instruccion
 from sivia_inventario.voz import ErrorAudio, FORMATOS_AUDIO, transcribir_audio, validar_audio
+from sivia_inventario.imagenes import validar_contenido_imagen
 from sivia_inventario.autenticacion import (
     NOMBRES_ROL, ROLES, autenticar, cambiar_contrasena, crear_usuario,
     existen_usuarios, listar_usuarios, obtener_usuario, restablecer_contrasena_con_codigo,
@@ -87,7 +89,9 @@ def contexto_global(request: Request) -> dict:
 plantillas = Jinja2Templates(directory=PLANTILLAS, context_processors=[contexto_global])
 
 RUTAS_PUBLICAS = {"/login", "/configurar-acceso", "/cerrar-sesion", "/recuperar-contrasena", "/recuperar-acceso"}
-PREFIJOS_ESTATICOS = ("/static/", "/productos/", "/evidencias/", "/imagenes/", "/revision-pendiente/")
+# Hojas de estilo y JavaScript son públicos para mostrar el inicio; las fotos,
+# evidencias y anotaciones requieren una sesión válida.
+PREFIJOS_ESTATICOS = ("/static/",)
 
 
 def respuesta_sin_permiso(request: Request, mensaje: str, estado: int = 403):
@@ -124,11 +128,23 @@ async def proteger_aplicacion(request: Request, call_next):
 
 # Se agrega después del middleware de permisos para que la sesión esté creada
 # antes de consultar request.session en cada solicitud.
+def secreto_sesion() -> str:
+    """Obtiene un secreto explícito en producción, sin una clave fija en código."""
+    secreto = os.getenv("SIVIA_SESION_SECRETA")
+    if secreto:
+        if len(secreto) < 32:
+            raise RuntimeError("SIVIA_SESION_SECRETA debe tener al menos 32 caracteres.")
+        return secreto
+    if os.getenv("SIVIA_ENTORNO", "local").lower() == "produccion":
+        raise RuntimeError("Configura SIVIA_SESION_SECRETA antes de iniciar SIVIA en producción.")
+    return secrets.token_urlsafe(32)
+
+
 app.add_middleware(
     SessionMiddleware,
-    secret_key=os.getenv("SIVIA_SESION_SECRETA", "sivia-local-cambia-esta-clave-antes-de-publicar"),
+    secret_key=secreto_sesion(),
     same_site="lax",
-    https_only=False,
+    https_only=os.getenv("SIVIA_HTTPS_ONLY", "0") == "1",
 )
 
 
@@ -162,6 +178,7 @@ async def guardar_imagen(archivo: UploadFile | None) -> str | None:
         raise ValueError("La fotografía seleccionada está vacía.")
     if len(contenido) > MAXIMO_IMAGEN_BYTES:
         raise ValueError("La fotografía no puede superar 5 MB.")
+    validar_contenido_imagen(contenido)
     nombre = f"{uuid4().hex}{extension}"
     (CARPETA_PRODUCTOS / nombre).write_bytes(contenido)
     return f"datos/productos/{nombre}"
@@ -176,6 +193,7 @@ async def guardar_evidencia(archivo: UploadFile | None) -> tuple[str, str]:
     contenido = await archivo.read()
     if not contenido or len(contenido) > MAXIMO_IMAGEN_BYTES:
         raise ValueError("La evidencia está vacía o supera 5 MB.")
+    validar_contenido_imagen(contenido)
     nombre = f"{uuid4().hex}{extension}"
     (CARPETA_EVIDENCIAS / nombre).write_bytes(contenido)
     return f"datos/evidencias/{nombre}", f"/evidencias/{nombre}"
@@ -652,9 +670,10 @@ async def analizar_verificacion(request: Request, evidencia: UploadFile | None =
                     )
                     bajas_comparadas = [{"clase": item["clase"], "confianza": item["confianza"]} for item in diagnostico["detecciones"]]
                 comparacion_modelos.append({"id": identificador, "nombre": datos_detector["nombre"], "conteos": resultado_comparado["conteos"], "total": resultado_comparado["total"], "bajas": bajas_comparadas})
-    except Exception as error:
+    except Exception:
+        REGISTRO.exception("Error inesperado al ejecutar el detector")
         plantilla = "verificar_tecnico.html" if modo_tecnico == "si" else "verificar.html"
-        contexto = {"pagina": "verificar", "error": f"No se pudo ejecutar el detector: {error}"}
+        contexto = {"pagina": "verificar", "error": "No se pudo ejecutar el detector. Revisa el registro técnico del servidor."}
         if modo_tecnico == "si":
             contexto["detectores"] = detectores_contexto()
         else:

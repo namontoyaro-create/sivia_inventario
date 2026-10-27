@@ -1,6 +1,15 @@
 from fastapi.testclient import TestClient
+import pytest
 
-from sivia_inventario.web import app
+from sivia_inventario.web import app, secreto_sesion
+
+
+def test_produccion_exige_secreto_de_sesion(monkeypatch):
+    monkeypatch.delenv("SIVIA_SESION_SECRETA", raising=False)
+    monkeypatch.setenv("SIVIA_ENTORNO", "produccion")
+
+    with pytest.raises(RuntimeError, match="SIVIA_SESION_SECRETA"):
+        secreto_sesion()
 
 
 def test_recuperacion_contrasena_es_publica_y_exige_codigo_local():

@@ -2,7 +2,7 @@ import cv2
 import numpy as np
 import pytest
 
-from sivia_inventario.imagenes import cargar_imagen
+from sivia_inventario.imagenes import cargar_imagen, validar_contenido_imagen
 
 
 def test_cargar_imagen_valida(tmp_path):
@@ -34,3 +34,16 @@ def test_archivo_invalido(tmp_path):
 
     with pytest.raises(ValueError, match="No se pudo leer"):
         cargar_imagen(ruta)
+
+
+def test_validar_contenido_imagen_rechaza_archivo_disfrazado():
+    with pytest.raises(ValueError, match="imagen válida"):
+        validar_contenido_imagen(b"no es una imagen aunque tenga extension jpg")
+
+
+def test_validar_contenido_imagen_acepta_jpeg_real():
+    imagen = np.full((20, 30, 3), 150, dtype=np.uint8)
+    ok, codificada = cv2.imencode(".jpg", imagen)
+    assert ok
+
+    validar_contenido_imagen(codificada.tobytes())

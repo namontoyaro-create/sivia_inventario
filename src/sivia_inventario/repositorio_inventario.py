@@ -1,7 +1,7 @@
 """Consultas de inventario usadas por la aplicación web."""
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 import hashlib
 from pathlib import Path
 import re
@@ -360,6 +360,46 @@ def stock_por_categoria(ruta: Path = RUTA_BASE_DATOS) -> list[dict[str, int | st
             "WHERE activo=1 GROUP BY familia ORDER BY cantidad DESC"
         ).fetchall()
     return [{"familia": fila["familia"], "cantidad": fila["cantidad"]} for fila in filas]
+
+
+def actividad_dashboard(ruta: Path = RUTA_BASE_DATOS) -> dict[str, list[dict]]:
+    """Devuelve actividad real para el panel, sin sintetizar movimientos."""
+    hoy = datetime.now().date()
+    fechas = [(hoy - timedelta(days=desplazamiento)).isoformat() for desplazamiento in range(6, -1, -1)]
+    with conectar(ruta) as conexion:
+        por_fecha = conexion.execute(
+            "SELECT substr(confirmado_en, 1, 10) AS fecha, operacion, COALESCE(SUM(cantidad), 0) AS cantidad "
+            "FROM movimientos_inventario WHERE substr(confirmado_en, 1, 10) >= ? "
+            "GROUP BY substr(confirmado_en, 1, 10), operacion",
+            (fechas[0],),
+        ).fetchall()
+        recientes = conexion.execute(
+            "SELECT m.codigo_movimiento, m.confirmado_en, p.id AS codigo_producto, p.producto, "
+            "p.imagen_ruta, m.operacion, m.cantidad, m.stock_anterior, m.stock_resultante "
+            "FROM movimientos_inventario m JOIN productos p ON p.id=m.producto_id "
+            "ORDER BY m.id DESC LIMIT 5"
+        ).fetchall()
+        mayores = conexion.execute(
+            "SELECT p.id AS codigo_producto, p.producto, p.imagen_ruta, "
+            "COALESCE(SUM(CASE WHEN m.operacion='entrada' THEN m.cantidad ELSE 0 END), 0) AS entradas, "
+            "COALESCE(SUM(CASE WHEN m.operacion='salida' THEN m.cantidad ELSE 0 END), 0) AS salidas, "
+            "COALESCE(SUM(m.cantidad), 0) AS total "
+            "FROM movimientos_inventario m JOIN productos p ON p.id=m.producto_id "
+            "GROUP BY p.id ORDER BY total DESC, p.producto LIMIT 5"
+        ).fetchall()
+        alertas = conexion.execute(
+            "SELECT id AS codigo_producto, producto, imagen_ruta, stock_registrado, stock_minimo "
+            "FROM productos WHERE activo=1 AND stock_registrado <= stock_minimo "
+            "ORDER BY stock_registrado ASC, producto LIMIT 5"
+        ).fetchall()
+    mapa = {fecha: {"fecha": fecha, "entradas": 0, "salidas": 0} for fecha in fechas}
+    for fila in por_fecha:
+        if fila["fecha"] in mapa:
+            mapa[fila["fecha"]][f"{fila['operacion']}s"] = fila["cantidad"]
+    return {
+        "por_fecha": list(mapa.values()), "recientes": [dict(fila) for fila in recientes],
+        "mayores": [dict(fila) for fila in mayores], "alertas_stock": [dict(fila) for fila in alertas],
+    }
 
 
 class MovimientoNoDisponible(ValueError):

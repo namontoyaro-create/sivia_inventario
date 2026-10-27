@@ -29,7 +29,7 @@ from sivia_inventario.preparacion_v2 import (
     registrar_procedencia_imagen,
     registrar_aprobaciones,
 )
-from sivia_inventario.repositorio_inventario import (MovimientoNoDisponible, actualizar_producto, buscar_productos_voz, confirmar_movimiento, crear_producto, crear_solicitud_movimiento, eliminar_producto, guardar_verificacion, listar_alertas, listar_categorias, listar_movimientos, listar_presentaciones, listar_productos, listar_productos_por_clase, listar_sesiones_verificacion, obtener_sesion_verificacion, obtener_producto, resumen_dashboard, stock_por_categoria)
+from sivia_inventario.repositorio_inventario import (MovimientoNoDisponible, actualizar_producto, buscar_productos_voz, confirmar_movimiento, crear_producto, crear_solicitud_movimiento, eliminar_producto, guardar_verificacion, listar_alertas, listar_categorias, listar_movimientos, listar_presentaciones, listar_productos, listar_productos_por_clase, listar_sesiones_verificacion, obtener_sesion_verificacion, obtener_producto, resumen_dashboard, stock_por_categoria, actividad_dashboard)
 from sivia_inventario.asistente_voz_logica import interpretar_instruccion
 from sivia_inventario.voz import ErrorAudio, FORMATOS_AUDIO, transcribir_audio, validar_audio
 from sivia_inventario.autenticacion import (
@@ -276,11 +276,29 @@ def inicio(request: Request):
     resumen = resumen_dashboard()
     resumen["stock_bajo"] = sum(p.stock_registrado <= p.stock_minimo for p in productos)
     resumen["agotados"] = sum(p.stock_registrado == 0 for p in productos)
-    movimientos = listar_movimientos()[:5]
-    verificaciones = listar_sesiones_verificacion()[:5]
+    categorias_stock = stock_por_categoria()
+    actividad = actividad_dashboard()
+    total_stock = resumen["stock_registrado"]
+    colores = ("#2387f4", "#18b979", "#ffbd27", "#fb6969", "#9a71e8", "#41bbd0")
+    acumulado = 0.0
+    segmentos = []
+    for indice, fila in enumerate(categorias_stock):
+        porcentaje = (float(fila["cantidad"]) * 100 / total_stock) if total_stock else 0
+        inicio = acumulado
+        acumulado += porcentaje
+        fila["porcentaje"] = porcentaje
+        fila["color"] = colores[indice % len(colores)]
+        segmentos.append(f"{fila['color']} {inicio:.2f}% {acumulado:.2f}%")
+    donut = ", ".join(segmentos) if segmentos else "#e8eff8 0 100%"
+    for grupo in (actividad["recientes"], actividad["mayores"], actividad["alertas_stock"]):
+        for fila in grupo:
+            fila["imagen_url"] = url_imagen(fila.get("imagen_ruta"))
+    maximo_movimiento = max((max(f["entradas"], f["salidas"]) for f in actividad["por_fecha"]), default=0)
     return plantillas.TemplateResponse(request, "inicio.html", {
-        "pagina": "inicio", "resumen": resumen, "categorias_stock": stock_por_categoria(),
-        "movimientos_recientes": movimientos, "verificaciones_recientes": verificaciones,
+        "pagina": "inicio", "resumen": resumen, "categorias_stock": categorias_stock,
+        "movimientos_fecha": actividad["por_fecha"], "movimientos_recientes": actividad["recientes"],
+        "productos_mayor_movimiento": actividad["mayores"], "alertas_stock": actividad["alertas_stock"],
+        "maximo_movimiento": maximo_movimiento, "donut": donut,
     })
 
 

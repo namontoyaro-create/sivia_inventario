@@ -9,7 +9,7 @@ def test_inicio_muestra_resumen_simulado():
 
     assert respuesta.status_code == 200
     assert "SIVIA" in respuesta.text
-    assert "Centro de control" in respuesta.text
+    assert "Dashboard" in respuesta.text
     assert "Productos registrados" in respuesta.text
 
 

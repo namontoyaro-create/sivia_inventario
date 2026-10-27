@@ -447,7 +447,10 @@ def verificar(request: Request):
         activo = detector_activo_contexto()
     except FileNotFoundError as error:
         return plantillas.TemplateResponse(request, "verificar.html", {"pagina": "verificar", "error": str(error)}, status_code=503)
-    return plantillas.TemplateResponse(request, "verificar.html", {"pagina": "verificar", "modelo_activo": activo})
+    return plantillas.TemplateResponse(request, "verificar.html", {
+        "pagina": "verificar", "modelo_activo": activo,
+        "productos_catalogo": [producto_contexto(producto) for producto in listar_productos()],
+    })
 
 
 @app.get("/verificar/tecnico", response_class=HTMLResponse)

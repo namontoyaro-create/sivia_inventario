@@ -6,6 +6,7 @@
   const lienzo = document.querySelector('#lienzo-camara');
   const iniciar = document.querySelector('#iniciar-camara');
   const abrirCamara = document.querySelector('#abrir-camara');
+  const limpiar = document.querySelector('#limpiar-evidencia');
   const capturar = document.querySelector('#capturar-camara');
   const formulario = document.querySelector('#form-evidencia');
   const estadoAnalisis = document.querySelector('#estado-analisis');
@@ -24,6 +25,16 @@
   abrirCamara?.addEventListener('click', () => {
     document.querySelector('[data-modo="camara"]')?.click();
     iniciar?.click();
+  });
+  limpiar?.addEventListener('click', () => {
+    if (flujo) flujo.getTracks().forEach((pista) => pista.stop());
+    flujo = undefined;
+    formulario?.reset();
+    panelCamara.hidden = true;
+    panelArchivo.hidden = false;
+    document.querySelectorAll('[data-modo]').forEach((item) => item.classList.toggle('activo', item.dataset.modo === 'archivo'));
+    if (botonAnalizar) botonAnalizar.textContent = 'Analizar imagen';
+    if (estadoAnalisis) estadoAnalisis.hidden = true;
   });
   iniciar?.addEventListener('click', async () => {
     try { flujo = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false }); video.srcObject = flujo; capturar.disabled = false; document.querySelector('#estado-camara').textContent = 'Cámara activa. Encuadra los productos y captura.'; }

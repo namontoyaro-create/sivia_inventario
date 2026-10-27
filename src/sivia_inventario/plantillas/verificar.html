@@ -3,13 +3,13 @@
 {% block extra_head %}<link rel="stylesheet" href="/static/verificar_activo.css">{% endblock %}
 {% block contenido %}
 <section class="encabezado-verificacion">
-  <div><p class="sobretitulo">Verificaci&oacute;n con inteligencia artificial</p><h1>Verificar inventario</h1><p>Captura una evidencia; SIVIA detecta y cuenta objetos reales con el modelo activo.</p></div>
-  <a class="boton secundario" href="/verificar/tecnico">Opciones t&eacute;cnicas</a>
+  <div><p class="sobretitulo">Verificaci&oacute;n con inteligencia artificial</p><h1>Verificaci&oacute;n de inventario con visi&oacute;n artificial</h1><p>Detecta y cuenta autom&aacute;ticamente productos de ferreter&iacute;a.</p></div>
+  <a class="boton secundario" href="/verificar">&#8682; Otra imagen</a>
 </section>
 {% if error %}<p class="error">{{ error }}</p>{% endif %}
 <section class="verificacion-ia">
   <section class="panel camara-verificacion">
-    <header class="cabecera-panel"><div><span class="icono-panel">&#8857;</span><h2>C&aacute;mara o fotograf&iacute;a</h2></div><span class="estado-camara-badge">IA lista</span></header>
+    <header class="cabecera-panel"><div><span class="icono-panel">&#8857;</span><h2>C&aacute;mara en tiempo real</h2></div><span class="estado-camara-badge">C&aacute;mara lista</span></header>
     <div class="modelo-activo"><strong>Analizando con IA:</strong> {{ modelo_activo.nombre }}<small>El modelo activo se selecciona autom&aacute;ticamente. Las detecciones se revisan antes de guardar.</small></div>
     <form method="post" action="/verificar/analizar" enctype="multipart/form-data" id="form-evidencia">
       <div class="modos"><button type="button" data-modo="camara">Usar c&aacute;mara</button><button class="activo" type="button" data-modo="archivo">Subir fotograf&iacute;a</button></div>
@@ -17,7 +17,7 @@
       <div class="visor visor-archivo" id="panel-archivo"><span>&#128247;</span><h2>Selecciona una imagen clara</h2><p>Los productos deben verse completos y distinguibles.</p><label class="boton primario" for="evidencia">Subir imagen</label><input id="evidencia" type="file" name="evidencia" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" capture="environment" required></div>
       <div class="visor visor-camara" id="panel-camara" hidden><video id="video-camara" autoplay playsinline></video><canvas id="lienzo-camara" hidden></canvas><p id="estado-camara">Activa la c&aacute;mara para capturar la evidencia.</p><button class="boton secundario" id="iniciar-camara" type="button">Iniciar c&aacute;mara</button><button class="boton primario" id="capturar-camara" type="button" disabled>Capturar y analizar</button></div>
       <p id="estado-analisis" class="estado-analisis" role="status" hidden>Analizando imagen con IA&hellip;</p>
-      <footer class="acciones-verificacion"><button class="boton secundario" type="button" id="abrir-camara">Capturar con c&aacute;mara</button><button class="boton primario boton-analizar" type="submit">Analizar imagen</button></footer>
+      <footer class="acciones-verificacion"><button class="boton primario" type="button" id="abrir-camara">&#128247; Capturar</button><button class="boton secundario boton-analizar" type="submit">&#128269; Analizar imagen</button><button class="boton limpiar-evidencia" type="button" id="limpiar-evidencia">&#128465; Limpiar</button></footer>
     </form>
   </section>
   <aside class="panel resultados-espera">
@@ -25,6 +25,10 @@
     <div class="resultado-vacio"><span>&#128269;</span><h3>A&uacute;n no hay resultados</h3><p>Sube una fotograf&iacute;a o captura con la c&aacute;mara. Aqu&iacute; ver&aacute;s las clases detectadas, cantidades reales y confianza de cada objeto.</p></div>
     <div class="reglas-verificacion"><strong>Antes de guardar</strong><ol><li>YOLO cuenta solo cajas por encima del umbral.</li><li>Selecciona el producto exacto cuando existan variantes.</li><li>Confirmar guarda una verificaci&oacute;n, nunca modifica el stock.</li></ol></div>
   </aside>
+</section>
+<section class="panel inventario-verificacion">
+  <header class="cabecera-panel"><div><span class="icono-panel">&#9635;</span><h2>Inventario de productos</h2></div><div class="controles-inventario-verificacion"><span>Todas las categor&iacute;as</span><span>Todos los estados</span><a class="boton primario" href="/inventario/nuevo">+ Nuevo producto</a></div></header>
+  <div class="tabla"><table><thead><tr><th>Foto</th><th>C&oacute;digo / SKU</th><th>Nombre del producto</th><th>Categor&iacute;a</th><th>Presentaci&oacute;n</th><th>Stock</th><th>Stock m&iacute;n.</th><th>Estado</th></tr></thead><tbody>{% for producto in productos_catalogo %}<tr><td>{% if producto.imagen_url %}<a href="{{ producto.imagen_url }}" target="_blank"><img class="foto-producto" src="{{ producto.imagen_url }}" alt="{{ producto.producto }}"></a>{% else %}<span class="foto-producto">Sin imagen</span>{% endif %}</td><td>{{ producto.sku or producto.id }}</td><td><strong>{{ producto.producto }}</strong></td><td>{{ producto.familia }}</td><td>{{ producto.presentacion }}</td><td>{{ producto.stock_registrado }}</td><td>{{ producto.stock_minimo }}</td><td><span class="badge {{ 'bajo' if producto.stock_registrado <= producto.stock_minimo else 'normal' }}">{{ 'Stock bajo' if producto.stock_registrado <= producto.stock_minimo else 'Activo' }}</span></td></tr>{% endfor %}</tbody></table></div>
 </section>
 <script src="/static/verificar.js"></script>
 {% endblock %}

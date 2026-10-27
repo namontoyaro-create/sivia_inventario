@@ -37,7 +37,7 @@ def test_paginas_principales_no_muestran_anotaciones_del_dataset():
     with TestClient(app) as cliente:
         paginas = [
                 ("/inventario", "Inventario de productos"),
-            ("/verificar", "Cámara lista"),
+            ("/verificar", "Analizar imagen"),
             ("/historial", "Historial de verificaciones"),
             ("/alertas", "Alertas"),
         ]
@@ -54,7 +54,7 @@ def test_verificar_usa_modelo_activo_sin_selector_manual():
 
     assert respuesta.status_code == 200
     assert "YOLO piloto SIVIA v2" in respuesta.text
-    assert "Procedencia de la fotografía" in respuesta.text
+    assert "Procedencia de la evidencia" in respuesta.text
     assert 'name="detector"' not in respuesta.text
     assert "Comparar YOLO piloto SIVIA v1 y v2" not in respuesta.text
     assert "Analizando imagen con IA" in respuesta.text

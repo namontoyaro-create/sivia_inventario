@@ -5,6 +5,7 @@
   const video = document.querySelector('#video-camara');
   const lienzo = document.querySelector('#lienzo-camara');
   const iniciar = document.querySelector('#iniciar-camara');
+  const abrirCamara = document.querySelector('#abrir-camara');
   const capturar = document.querySelector('#capturar-camara');
   const formulario = document.querySelector('#form-evidencia');
   const estadoAnalisis = document.querySelector('#estado-analisis');
@@ -20,6 +21,10 @@
     panelCamara.hidden = !camara; panelArchivo.hidden = camara;
     document.querySelectorAll('[data-modo]').forEach((item) => item.classList.toggle('activo', item === boton));
   }));
+  abrirCamara?.addEventListener('click', () => {
+    document.querySelector('[data-modo="camara"]')?.click();
+    iniciar?.click();
+  });
   iniciar?.addEventListener('click', async () => {
     try { flujo = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false }); video.srcObject = flujo; capturar.disabled = false; document.querySelector('#estado-camara').textContent = 'Cámara activa. Encuadra los productos y captura.'; }
     catch { document.querySelector('#estado-camara').textContent = 'No se pudo usar la cámara. Usa “Subir imagen”.'; }

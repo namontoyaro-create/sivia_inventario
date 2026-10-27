@@ -676,15 +676,18 @@ async def analizar_verificacion(request: Request, evidencia: UploadFile | None =
         detectados.append({"id": numero, "clase_ia": clase, "confianza": deteccion["confianza"], "dudosa": bool(deteccion.get("dudosa") or deteccion.get("conflicto")), "compatibles": compatibles})
     desconocidas = {clase: cantidad for clase, cantidad in resultado["conteos"].items() if clase not in catalogo}
     bajas = [{"clase": item["clase"], "confianza": item["confianza"], "xyxy": item["xyxy"]} for item in (resultado_bajo or {"detecciones": []})["detecciones"]]
-    resumen_yolo = [
-        {
+    resumen_yolo = []
+    for clase, confianzas_clase in sorted(por_clase.items()):
+        compatibles = [producto_contexto(producto) for producto in listar_productos_por_clase(clase)]
+        resumen_yolo.append({
             "clase_ia": clase,
             "cantidad": len(confianzas_clase),
             "confianzas": confianzas_clase,
             "confianza_promedio": sum(confianzas_clase) / len(confianzas_clase),
-        }
-        for clase, confianzas_clase in sorted(por_clase.items())
-    ]
+            # Es una referencia del catálogo, no una selección automática del producto.
+            "referencia_catalogo": compatibles[0] if compatibles else None,
+            "dudosas": dudas.get(clase, 0),
+        })
     estado_resultado = "detectado" if detectados else ("fuera_catalogo" if desconocidas else ("baja_confianza" if bajas else "sin_deteccion"))
     return plantillas.TemplateResponse(request, "revision_verificacion.html", {"pagina": "verificar", "detectados": detectados, "desconocidas": desconocidas, "detecciones_bajas": bajas, "estado_resultado": estado_resultado, "evidencia_ruta": evidencia_ruta, "evidencia_url": evidencia_url, "resultado_ruta": resultado_ruta, "resultado_url": resultado_url, "detector": detector, "detector_nombre": detectores[detector]["nombre"], "procedencia": procedencia, "comparacion_modelos": comparacion_modelos, "resumen_yolo": resumen_yolo, "total_yolo": sum(item["cantidad"] for item in resumen_yolo), "aviso": "Predicciones reales del detector seleccionado. Las detecciones de baja confianza no se cuentan."})
 

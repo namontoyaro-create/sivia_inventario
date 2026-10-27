@@ -1,6 +1,7 @@
 """Usuarios, roles y credenciales locales para la aplicación SIVIA."""
 
 from dataclasses import dataclass
+from datetime import datetime, timedelta, timezone
 import hashlib
 import hmac
 import re
@@ -16,6 +17,7 @@ NOMBRES_ROL = {
     "auditor": "Auditor",
 }
 _USUARIO_VALIDO = re.compile(r"^[a-zA-Z0-9._-]{3,40}$")
+MINUTOS_CODIGO_RECUPERACION = 15
 
 
 @dataclass(frozen=True)
@@ -47,6 +49,11 @@ def _validar(usuario: str, nombre: str, rol: str, contrasena: str) -> tuple[str,
 
 def _derivar(contrasena: str, sal: bytes) -> str:
     return hashlib.scrypt(contrasena.encode("utf-8"), salt=sal, n=2**14, r=8, p=1).hex()
+
+
+def _huella_codigo(codigo: str) -> str:
+    """No guarda c\u00f3digos de recuperaci\u00f3n en texto plano."""
+    return hashlib.sha256(codigo.strip().encode("utf-8")).hexdigest()
 
 
 def _fila_usuario(fila) -> Usuario | None:
@@ -112,3 +119,76 @@ def cambiar_contrasena(usuario: str, contrasena_actual: str, nueva_contrasena: s
     with conectar(ruta) as conexion:
         conexion.execute("UPDATE usuarios SET password_hash=?,password_salt=?,actualizado_en=CURRENT_TIMESTAMP WHERE id=?",
                          (_derivar(nueva_contrasena, sal), sal.hex(), actual.id))
+
+
+def generar_codigo_recuperacion_local(usuario: str, ruta: Path = RUTA_BASE_DATOS,
+                                      minutos: int = MINUTOS_CODIGO_RECUPERACION) -> tuple[str, datetime]:
+    """Genera un c\u00f3digo para una cuenta activa desde la consola local.
+
+    El valor devuelto se muestra una sola vez al operador local; SQLite recibe
+    solamente su huella SHA-256. Se invalida cualquier c\u00f3digo anterior de
+    la misma cuenta para evitar dos restablecimientos simult\u00e1neos.
+    """
+    if minutos < 1 or minutos > 60:
+        raise ValueError("La vigencia del c\u00f3digo debe estar entre 1 y 60 minutos.")
+    cuenta = obtener_usuario(usuario, ruta)
+    if not cuenta or not cuenta.activo:
+        raise ValueError("No existe una cuenta activa con ese usuario.")
+    codigo = f"SIVIA-{secrets.token_urlsafe(18)}"
+    vence_en = datetime.now(timezone.utc) + timedelta(minutes=minutos)
+    ahora = datetime.now(timezone.utc).isoformat()
+    with conectar(ruta) as conexion:
+        conexion.execute(
+            "UPDATE recuperaciones_contrasena SET usada_en=? WHERE usuario_id=? AND usada_en IS NULL",
+            (ahora, cuenta.id),
+        )
+        conexion.execute(
+            "INSERT INTO recuperaciones_contrasena(usuario_id,codigo_hash,vence_en) VALUES (?,?,?)",
+            (cuenta.id, _huella_codigo(codigo), vence_en.isoformat()),
+        )
+    return codigo, vence_en
+
+
+def restablecer_contrasena_con_codigo(usuario: str, codigo: str, nueva_contrasena: str,
+                                      ruta: Path = RUTA_BASE_DATOS) -> None:
+    """Restablece una clave si el c\u00f3digo local vigente no fue utilizado.
+
+    La actualizaci\u00f3n de hash y el consumo del c\u00f3digo ocurren en una misma
+    transacci\u00f3n para impedir reusos y cambios parciales.
+    """
+    usuario_normalizado = usuario.strip().lower()
+    mensaje_error = "No se pudo validar el usuario o el c\u00f3digo de recuperaci\u00f3n."
+    if not _USUARIO_VALIDO.fullmatch(usuario_normalizado) or not codigo.strip():
+        raise ValueError(mensaje_error)
+    with conectar(ruta) as conexion:
+        fila = conexion.execute(
+            """
+            SELECT r.id AS recuperacion_id, r.vence_en, r.usada_en,
+                   u.id, u.usuario, u.nombre, u.rol, u.activo
+            FROM recuperaciones_contrasena r
+            JOIN usuarios u ON u.id=r.usuario_id
+            WHERE u.usuario=? AND r.codigo_hash=?
+            ORDER BY r.id DESC LIMIT 1
+            """,
+            (usuario_normalizado, _huella_codigo(codigo)),
+        ).fetchone()
+        if not fila or not bool(fila["activo"]) or fila["usada_en"]:
+            raise ValueError(mensaje_error)
+        try:
+            vencido = datetime.fromisoformat(str(fila["vence_en"])) <= datetime.now(timezone.utc)
+        except ValueError:
+            vencido = True
+        if vencido:
+            raise ValueError(mensaje_error)
+        _validar(str(fila["usuario"]), str(fila["nombre"]), str(fila["rol"]), nueva_contrasena)
+        sal = secrets.token_bytes(16)
+        consumido = conexion.execute(
+            "UPDATE recuperaciones_contrasena SET usada_en=? WHERE id=? AND usada_en IS NULL",
+            (datetime.now(timezone.utc).isoformat(), fila["recuperacion_id"]),
+        )
+        if consumido.rowcount != 1:
+            raise ValueError(mensaje_error)
+        conexion.execute(
+            "UPDATE usuarios SET password_hash=?,password_salt=?,actualizado_en=CURRENT_TIMESTAMP WHERE id=?",
+            (_derivar(nueva_contrasena, sal), sal.hex(), fila["id"]),
+        )

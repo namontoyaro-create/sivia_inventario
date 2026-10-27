@@ -59,6 +59,6 @@ def test_migracion_respalda_base_existente_y_conserva_productos(tmp_path):
         columnas = {fila[1] for fila in conexion.execute("PRAGMA table_info(productos)")}
         versiones = [fila[0] for fila in conexion.execute("SELECT version FROM versiones_esquema ORDER BY version")]
     assert {"sku", "codigo_barras", "proveedor", "precio_compra", "precio_venta", "stock_minimo", "unidad_medida", "estado_producto"}.issubset(columnas)
-    assert versiones == [1, 2]
+    assert versiones == [1, 2, 3]
     assert [p.stock_registrado for p in listar_productos(ruta) if p.id == "P900"] == [12]
     assert inicializar_base_datos(ruta) is None

@@ -132,6 +132,19 @@ CREATE TABLE IF NOT EXISTS usuarios (
     creado_en TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     actualizado_en TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TABLE IF NOT EXISTS recuperaciones_contrasena (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    usuario_id INTEGER NOT NULL REFERENCES usuarios(id),
+    codigo_hash TEXT NOT NULL UNIQUE,
+    creada_en TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    vence_en TEXT NOT NULL,
+    usada_en TEXT,
+    creada_localmente INTEGER NOT NULL DEFAULT 1 CHECK (creada_localmente IN (0, 1))
+);
+
+CREATE INDEX IF NOT EXISTS idx_recuperaciones_usuario_vigente
+ON recuperaciones_contrasena(usuario_id, usada_en, vence_en);
 """
 
 
@@ -245,6 +258,27 @@ def _aplicar_migraciones(conexion: sqlite3.Connection) -> None:
     conexion.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_productos_codigo_barras_unico ON productos(codigo_barras) WHERE codigo_barras IS NOT NULL AND trim(codigo_barras) <> ''")
     _registrar_migracion(conexion, 2, "datos_comerciales_producto")
 
+    # Versi\u00f3n 3: recuperaci\u00f3n local de credenciales. Los c\u00f3digos nunca se
+    # almacenan en texto plano y no afecta productos ni existencias.
+    conexion.execute(
+        """
+        CREATE TABLE IF NOT EXISTS recuperaciones_contrasena (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            usuario_id INTEGER NOT NULL REFERENCES usuarios(id),
+            codigo_hash TEXT NOT NULL UNIQUE,
+            creada_en TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            vence_en TEXT NOT NULL,
+            usada_en TEXT,
+            creada_localmente INTEGER NOT NULL DEFAULT 1 CHECK (creada_localmente IN (0, 1))
+        )
+        """
+    )
+    conexion.execute(
+        "CREATE INDEX IF NOT EXISTS idx_recuperaciones_usuario_vigente "
+        "ON recuperaciones_contrasena(usuario_id, usada_en, vence_en)"
+    )
+    _registrar_migracion(conexion, 3, "recuperacion_local_contrasena")
+
 
 def inicializar_base_datos(ruta: Path = RUTA_BASE_DATOS) -> Path | None:
     """Inicializa SIVIA y respalda una base existente antes de migrarla.
@@ -255,7 +289,9 @@ def inicializar_base_datos(ruta: Path = RUTA_BASE_DATOS) -> Path | None:
     tablas, columnas = _tablas_y_columnas(ruta)
     campos_v2 = {"sku", "codigo_barras", "proveedor", "precio_compra", "precio_venta", "stock_minimo", "unidad_medida", "estado_producto"}
     requiere_migracion = bool(tablas) and (
-        "versiones_esquema" not in tablas or not campos_v2.issubset(columnas)
+        "versiones_esquema" not in tablas
+        or not campos_v2.issubset(columnas)
+        or "recuperaciones_contrasena" not in tablas
     )
     respaldo = crear_respaldo_antes_migracion(ruta) if requiere_migracion else None
 

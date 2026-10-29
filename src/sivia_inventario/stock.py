@@ -6,6 +6,10 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from sivia_inventario.categorias import CATALOGO, ProductoCatalogo, validar_catalogo
+from sivia_inventario.seguridad_archivos import resolver_ruta_controlada
+
+
+RAIZ = Path(__file__).resolve().parents[2]
 
 
 @dataclass(frozen=True)
@@ -27,6 +31,7 @@ def _objeto_sin_duplicados(pares: list[tuple[str, object]]) -> dict[str, object]
 def cargar_stock_referencia(
     ruta: str | Path,
     catalogo: tuple[ProductoCatalogo, ...],
+    raiz: Path = RAIZ,
 ) -> StockReferencia:
     """Lee cantidades por ID del catálogo sin completar registros ausentes.
 
@@ -34,11 +39,12 @@ def cargar_stock_referencia(
     La lectura no modifica el archivo, el catálogo ni las existencias.
     """
     validar_catalogo(catalogo)
-    texto = Path(ruta).read_text(encoding="utf-8-sig")
+    archivo = resolver_ruta_controlada(ruta, raiz, "datos", extensiones={".json"})
+    texto = archivo.read_text(encoding="utf-8-sig")
     try:
         datos = json.loads(texto, object_pairs_hook=_objeto_sin_duplicados)
     except json.JSONDecodeError as error:
-        raise ValueError(f"JSON inválido en {ruta}: {error.msg}") from error
+        raise ValueError(f"JSON inválido: {error.msg}") from error
 
     if not isinstance(datos, dict):
         raise ValueError("El archivo de stock debe contener un objeto JSON.")

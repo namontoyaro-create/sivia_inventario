@@ -51,7 +51,8 @@ def test_rechaza_stock_invalido(candado, campo, valor):
 
 @pytest.mark.parametrize("registrado, diferencia", [(20, -2), (25, -7)])
 def test_comparacion_usa_la_cantidad_del_json(tmp_path, candado, registrado, diferencia):
-    ruta = tmp_path / "stock.json"
+    ruta = tmp_path / "datos" / "inventario" / "stock.json"
+    ruta.parent.mkdir(parents=True)
     ruta.write_text(
         json.dumps({
             "tipo_datos": "simulados",
@@ -60,7 +61,7 @@ def test_comparacion_usa_la_cantidad_del_json(tmp_path, candado, registrado, dif
         }),
         encoding="utf-8",
     )
-    referencia = cargar_stock_referencia(ruta, (candado,))
+    referencia = cargar_stock_referencia(ruta, (candado,), tmp_path)
 
     resultado = comparar_con_referencia(candado, 18, referencia)
 

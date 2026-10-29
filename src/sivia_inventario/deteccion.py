@@ -12,8 +12,9 @@ import cv2
 
 from sivia_inventario.categorias import CATALOGO
 from sivia_inventario.conteo import contar_por_clase
-from sivia_inventario.dataset import RAIZ, sha256
+from sivia_inventario.dataset import RAIZ
 from sivia_inventario.imagenes import cargar_imagen
+from sivia_inventario.seguridad_archivos import resolver_ruta_controlada, sha256_archivo_controlado
 from sivia_inventario.stock import cargar_stock_referencia
 from sivia_inventario.verificacion import comparar_conteos
 
@@ -57,6 +58,27 @@ def detector_activo() -> tuple[str, dict]:
         if datos and datos["ruta"].is_file():
             return identificador, datos
     raise FileNotFoundError("No hay un modelo YOLO local disponible para SIVIA.")
+
+
+def ruta_modelo_controlada(ruta: str | Path) -> Path:
+    """Acepta pesos locales solo desde las carpetas internas de SIVIA."""
+    for directorio in ("modelos", "runs/detect"):
+        try:
+            return resolver_ruta_controlada(ruta, RAIZ, directorio, extensiones={".pt"})
+        except ValueError:
+            continue
+    raise ValueError("El modelo debe estar en una carpeta interna autorizada de SIVIA.")
+
+
+def cargar_imagen_verificacion(ruta: str | Path):
+    """Carga únicamente evidencia o imágenes del catálogo de SIVIA."""
+    for directorio in ("datos/evidencias", "datos/imagenes"):
+        try:
+            archivo = resolver_ruta_controlada(ruta, RAIZ, directorio)
+            return cargar_imagen(archivo, raiz=RAIZ, directorio_autorizado=directorio), archivo, directorio
+        except ValueError:
+            continue
+    raise ValueError("La imagen debe estar en una carpeta autorizada de SIVIA.")
 
 
 def _iou(caja_a: list[float], caja_b: list[float]) -> float:
@@ -107,17 +129,14 @@ def procesar_imagen(
         raise ValueError("La confianza debe estar entre 0 (excluido) y 1.")
     if stock_path and not mismo_alcance:
         raise ValueError("Para comparar debe confirmar la misma unidad y alcance con --mismo-alcance.")
-    imagen = cargar_imagen(imagen_path)
-    modelo_path = Path(modelo_path).resolve()
-    referencia = cargar_stock_referencia(stock_path, CATALOGO) if stock_path else None
-    if not modelo_path.is_file() and modelo_path != MODELO_GENERAL:
-        raise FileNotFoundError(f"No existe el modelo: {modelo_path}")
-    modelo_path.parent.mkdir(parents=True, exist_ok=True)
+    imagen, imagen_path_segura, directorio_imagen = cargar_imagen_verificacion(imagen_path)
+    modelo_path = ruta_modelo_controlada(modelo_path)
+    referencia = cargar_stock_referencia(stock_path, CATALOGO, RAIZ) if stock_path else None
     ficha = modelo_path.with_suffix(".json")
     metadata = {}
     if ficha.is_file():
         metadata = json.loads(ficha.read_text(encoding="utf-8"))
-        if metadata.get("sha256_modelo") != sha256(modelo_path):
+        if metadata.get("sha256_modelo") != sha256_archivo_controlado(modelo_path, RAIZ, modelo_path.parent.relative_to(RAIZ)):
             raise ValueError("Los pesos no coinciden con la ficha del modelo.")
     from ultralytics import YOLO
     modelo = YOLO(str(modelo_path))
@@ -141,8 +160,10 @@ def procesar_imagen(
     ])
     conteos = contar_por_clase(d["clase"] for d in detecciones)
     reporte = {
-        "imagen": str(Path(imagen_path).resolve()), "sha256_imagen": sha256(Path(imagen_path)),
-        "modelo": str(modelo_path), "sha256_modelo": sha256(modelo_path),
+        "imagen": str(imagen_path_segura),
+        "sha256_imagen": sha256_archivo_controlado(imagen_path_segura, RAIZ, directorio_imagen),
+        "modelo": str(modelo_path),
+        "sha256_modelo": sha256_archivo_controlado(modelo_path, RAIZ, modelo_path.parent.relative_to(RAIZ)),
         "fecha_utc": datetime.now(timezone.utc).isoformat(),
         "modo": "catalogo_experimental" if compatible else "general",
         "validado_para_inventario": bool(metadata.get("validado_para_inventario", False)),
@@ -154,12 +175,13 @@ def procesar_imagen(
         reporte.update(
             tipo_stock=referencia.tipo_datos,
             stock_archivo=str(Path(stock_path).resolve()),
-            sha256_stock=sha256(Path(stock_path)),
+            sha256_stock=sha256_archivo_controlado(stock_path, RAIZ, "datos"),
             alcance_confirmado=True,
             comparaciones=comparar_conteos(conteos, referencia),
         )
     nombre = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S") + "_" + uuid.uuid4().hex[:8]
-    carpeta = Path(salida) / nombre
+    salida = resolver_ruta_controlada(salida, RAIZ, "resultados", debe_existir=False)
+    carpeta = salida / nombre
     carpeta.mkdir(parents=True, exist_ok=False)
     imagen_salida = carpeta / "detecciones.jpg"
     ok, contenido = cv2.imencode(".jpg", resultado.plot())

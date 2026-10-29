@@ -10,14 +10,18 @@ from sivia_inventario.preparacion_v2 import (
     registrar_aprobaciones,
     plan_mejora_dataset,
     resumen_clases,
+    actualizar_rectangulos_propuesta,
+    rechazar_propuesta,
 )
+import pytest
 
 
 def test_registrar_procedencia_conserva_reserva_test(tmp_path):
     imagen = tmp_path / "datos" / "imagenes" / "disco_corte" / "nuevo.jpg"
     imagen.parent.mkdir(parents=True)
     imagen.write_bytes(b"imagen")
-    registro = tmp_path / "registro.json"
+    registro = tmp_path / "datos" / "anotaciones" / "registro.json"
+    registro.parent.mkdir(parents=True)
     registro.write_text('{"imagenes": []}', encoding="utf-8")
 
     registrar_procedencia_imagen(
@@ -35,14 +39,16 @@ def test_auditar_imagenes_nuevas_detecta_una_foto_sin_modificar_el_manifiesto(tm
     imagen.parent.mkdir(parents=True)
     assert cv2.imwrite(str(imagen), np.full((20, 20, 3), 100, dtype=np.uint8))
 
-    registro = raiz / "registro.json"
+    registro = raiz / "datos" / "anotaciones" / "registro.json"
+    registro.parent.mkdir(parents=True)
     registro.write_text(json.dumps({"imagenes": [{
         "archivo": "datos/imagenes/candado/nuevo.jpg",
         "clase_ia": "candado",
         "origen": "prueba_fisica",
         "grupo_escena": "escena_01",
     }]}), encoding="utf-8")
-    manifiesto = raiz / "manifiesto.json"
+    manifiesto = raiz / "datos" / "anotaciones" / "manifiesto.json"
+    manifiesto.parent.mkdir(parents=True, exist_ok=True)
     manifiesto.write_text(json.dumps({"imagenes": []}), encoding="utf-8")
 
     informe = auditar_imagenes_nuevas(manifiesto, registro, raiz)
@@ -57,13 +63,14 @@ def test_resumen_clases_mantiene_la_clase_real_de_la_propuesta():
 
 
 def test_plan_de_mejora_indica_faltantes_sin_cambiar_anotaciones(tmp_path):
-    manifiesto = tmp_path / "manifiesto.json"
+    manifiesto = tmp_path / "datos" / "anotaciones" / "manifiesto.json"
+    manifiesto.parent.mkdir(parents=True)
     manifiesto.write_text(json.dumps({
         "clases": ["candado"],
         "imagenes": [{"archivo": "datos/imagenes/candado/a.jpg", "estado": "revisada_usuario", "split": "train", "objetos": [{"clase": "candado"}]}],
     }), encoding="utf-8")
 
-    plan = plan_mejora_dataset(manifiesto)
+    plan = plan_mejora_dataset(manifiesto, tmp_path)
 
     assert plan[0]["splits"]["train"] == {"actual": 1, "meta": 20, "faltan": 19}
     assert plan[0]["splits"]["test"]["faltan"] == 5
@@ -74,9 +81,10 @@ def test_registrar_aprobaciones_conserva_clase_y_procedencia(tmp_path, monkeypat
     imagen = tmp_path / archivo
     imagen.parent.mkdir(parents=True)
     assert cv2.imwrite(str(imagen), np.full((20, 30, 3), 100, dtype=np.uint8))
-    manifiesto = tmp_path / "manifiesto.json"
+    manifiesto = tmp_path / "datos" / "anotaciones" / "manifiesto.json"
+    manifiesto.parent.mkdir(parents=True)
     manifiesto.write_text(json.dumps({"imagenes": []}), encoding="utf-8")
-    propuestas = tmp_path / "propuestas.json"
+    propuestas = tmp_path / "datos" / "anotaciones" / "propuestas.json"
     propuestas.write_text(json.dumps({"imagenes": [{
         "archivo": archivo, "origen": "internet", "grupo_escena": "escena",
         "objetos": [{"clase": "candado", "xyxy": [0.1, 0.1, 0.9, 0.9]}],
@@ -97,9 +105,10 @@ def test_registrar_aprobaciones_conserva_split_propuesto_para_nueva_foto(tmp_pat
     imagen = tmp_path / archivo
     imagen.parent.mkdir(parents=True)
     assert cv2.imwrite(str(imagen), np.full((20, 30, 3), 100, dtype=np.uint8))
-    manifiesto = tmp_path / "manifiesto.json"
+    manifiesto = tmp_path / "datos" / "anotaciones" / "manifiesto.json"
+    manifiesto.parent.mkdir(parents=True)
     manifiesto.write_text(json.dumps({"imagenes": []}), encoding="utf-8")
-    propuestas = tmp_path / "propuestas.json"
+    propuestas = tmp_path / "datos" / "anotaciones" / "propuestas.json"
     propuestas.write_text(json.dumps({"imagenes": [{
         "archivo": archivo, "origen": "prueba_fisica", "grupo_escena": "escena_test",
         "split_propuesto": "test",
@@ -110,3 +119,24 @@ def test_registrar_aprobaciones_conserva_split_propuesto_para_nueva_foto(tmp_pat
 
     registrado = json.loads(manifiesto.read_text(encoding="utf-8"))["imagenes"][0]
     assert registrado["split"] == "test"
+
+
+@pytest.mark.parametrize("accion", ["procedencia", "rectangulos", "rechazo", "aprobacion"])
+def test_operaciones_de_propuestas_rechazan_rutas_fuera_de_imagenes(tmp_path, accion):
+    raiz = tmp_path
+    anotaciones = raiz / "datos" / "anotaciones"
+    anotaciones.mkdir(parents=True)
+    propuestas = anotaciones / "propuestas.json"
+    propuestas.write_text(json.dumps({"imagenes": []}), encoding="utf-8")
+    manifiesto = anotaciones / "manifiesto.json"
+    manifiesto.write_text(json.dumps({"imagenes": []}), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="secuencias '..'"):
+        if accion == "procedencia":
+            registrar_procedencia_imagen("../secreto.jpg", "internet", "escena", "train", propuestas, raiz)
+        elif accion == "rectangulos":
+            actualizar_rectangulos_propuesta("../secreto.jpg", [{"clase": "candado", "xyxy": [0.1, 0.1, 0.9, 0.9]}], propuestas)
+        elif accion == "rechazo":
+            rechazar_propuesta("../secreto.jpg", "No corresponde", propuestas)
+        else:
+            registrar_aprobaciones({"../secreto.jpg"}, manifiesto, propuestas, raiz)

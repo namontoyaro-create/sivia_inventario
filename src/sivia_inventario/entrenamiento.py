@@ -6,7 +6,8 @@ import json
 from pathlib import Path
 import shutil
 
-from sivia_inventario.dataset import RAIZ, auditar, resolver_ruta_controlada, sha256, validar_caja
+from sivia_inventario.dataset import RAIZ, auditar, resolver_ruta_controlada, validar_caja
+from sivia_inventario.seguridad_archivos import sha256_archivo_controlado
 
 
 def ruta_configuracion_entrenamiento(config: str | Path) -> Path:
@@ -34,7 +35,7 @@ def verificar_exportacion(config: Path) -> dict:
         nombre = f"{e['sha256'][:12]}_{original.stem}"
         imagen = carpeta / "images" / e["split"] / (nombre + original.suffix.lower())
         etiqueta = carpeta / "labels" / e["split"] / (nombre + ".txt")
-        if sha256(imagen) != e["sha256"]:
+        if sha256_archivo_controlado(imagen, RAIZ, "datos/entrenamiento") != e["sha256"]:
             raise ValueError("Imagen exportada alterada.")
         lineas = [str(manifiesto["clases"].index(o["clase"])) + " " + " ".join(f"{v:.8f}" for v in validar_caja(o["xyxy"])) for o in e["objetos"]]
         if etiqueta.read_text(encoding="utf-8").splitlines() != lineas:
@@ -92,7 +93,7 @@ def main() -> None:
         metricas = {str(k): float(v) for k, v in modelo.trainer.metrics.items()}
         registro = {
             "experimental": True, "validado_para_inventario": False,
-            "modelo": destino.name, "sha256_modelo": sha256(destino),
+            "modelo": destino.name, "sha256_modelo": sha256_archivo_controlado(destino, RAIZ, "modelos"),
             "ultralytics": version_yolo, "torch": torch.__version__,
             "epocas_solicitadas": args.epocas, "tamano": args.tamano,
             "batch": 4, "nbs": 4, "optimizer": "AdamW", "lr0": 0.001,

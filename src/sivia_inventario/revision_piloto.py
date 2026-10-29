@@ -9,7 +9,7 @@ import argparse
 import json
 from pathlib import Path
 
-from sivia_inventario.dataset import MANIFIESTO
+from sivia_inventario.dataset import MANIFIESTO, RAIZ, ruta_manifiesto_controlada
 
 
 EXCLUSIONES: dict[str, str] = {
@@ -47,8 +47,9 @@ SPLITS_CORREGIDOS = {
 }
 
 
-def aplicar_revision(manifiesto: Path = MANIFIESTO) -> dict[str, int]:
-    ruta = Path(manifiesto)
+def aplicar_revision(manifiesto: Path = MANIFIESTO, raiz: Path = RAIZ) -> dict[str, int]:
+    """Aplica únicamente reglas internas a un manifiesto autorizado."""
+    ruta = ruta_manifiesto_controlada(manifiesto, raiz)
     datos = json.loads(ruta.read_text(encoding="utf-8"))
     confirmadas = excluidas = splits = 0
     for entrada in datos["imagenes"]:

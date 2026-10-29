@@ -47,6 +47,7 @@ CARPETA_PRODUCTOS = RAIZ / "datos" / "productos"
 CARPETA_EVIDENCIAS = RAIZ / "datos" / "evidencias"
 EXTENSIONES_IMAGEN = {".jpg", ".jpeg", ".png", ".webp"}
 MAXIMO_IMAGEN_BYTES = 5 * 1024 * 1024
+MAXIMO_RECTANGULOS_POR_PROPUESTA = 100
 CARPETA_PRODUCTOS.mkdir(parents=True, exist_ok=True)
 CARPETA_EVIDENCIAS.mkdir(parents=True, exist_ok=True)
 
@@ -491,7 +492,8 @@ async def transcribir_instruccion_voz(request: Request, audio: UploadFile | None
     contenido = await audio.read()
     ruta_temporal = None
     try:
-        REGISTRO.info("Audio recibido para transcripción: bytes=%d extension=%s mime=%s", len(contenido), extension, audio.content_type or "no_indicado")
+        # Solo se registra metadato normalizado; MIME y nombre son entrada del cliente.
+        REGISTRO.info("Audio recibido para transcripción: bytes=%d extension=%s", len(contenido), extension)
         with tempfile.NamedTemporaryFile(suffix=extension, delete=False) as temporal:
             temporal.write(contenido)
             ruta_temporal = Path(temporal.name)
@@ -499,7 +501,8 @@ async def transcribir_instruccion_voz(request: Request, audio: UploadFile | None
         texto = await run_in_threadpool(transcribir_audio, ruta_temporal)
         return JSONResponse({"ok": True, "transcripcion": texto})
     except ErrorAudio as error:
-        REGISTRO.warning("Audio no transcrito: extension=%s motivo=%s", extension, error)
+        # El detalle puede contener texto proveniente del decodificador o archivo.
+        REGISTRO.warning("Audio no transcrito por validación o decodificación: extension=%s", extension)
         return JSONResponse({"ok": False, "error": str(error)}, 400)
     except Exception:
         REGISTRO.exception("Error inesperado durante la transcripción de audio")
@@ -602,6 +605,8 @@ def corregir_anotacion(request: Request, archivo: str):
 
 @app.post("/entrenamiento-ia/corregir")
 async def guardar_correccion_anotacion(request: Request, archivo: str = Form(), total: int = Form()):
+    if not isinstance(total, int) or isinstance(total, bool) or not 1 <= total <= MAXIMO_RECTANGULOS_POR_PROPUESTA:
+        return HTMLResponse("La cantidad de rectángulos no es válida.", 400)
     formulario = await request.form()
     try:
         objetos = [{

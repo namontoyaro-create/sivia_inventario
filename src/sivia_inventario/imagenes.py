@@ -3,6 +3,8 @@ from pathlib import Path
 import cv2
 import numpy as np
 
+from sivia_inventario.seguridad_archivos import leer_archivo_controlado
+
 
 MAXIMO_PIXELES_IMAGEN = 25_000_000
 
@@ -18,14 +20,19 @@ def validar_contenido_imagen(contenido: bytes) -> None:
         raise ValueError("La imagen supera el límite seguro de resolución.")
 
 
-def cargar_imagen(ruta: str | Path) -> np.ndarray:
+def cargar_imagen(
+    ruta: str | Path,
+    *,
+    raiz: Path | None = None,
+    directorio_autorizado: str | Path = "datos/imagenes",
+) -> np.ndarray:
     """Carga una imagen en formato BGR de OpenCV."""
-    archivo = Path(ruta)
-
-    if not archivo.is_file():
-        raise FileNotFoundError(f"No existe el archivo: {archivo}")
-
-    datos = np.frombuffer(archivo.read_bytes(), dtype=np.uint8)
+    base = raiz or Path(__file__).resolve().parents[2]
+    archivo, contenido = leer_archivo_controlado(
+        ruta, base, directorio_autorizado,
+        extensiones={".bmp", ".jpeg", ".jpg", ".png", ".tif", ".tiff", ".webp"},
+    )
+    datos = np.frombuffer(contenido, dtype=np.uint8)
 
     if datos.size == 0:
         raise ValueError(f"El archivo está vacío: {archivo}")

@@ -33,7 +33,7 @@ def test_auditar_rechaza_propuestas_automaticas_sin_revision(tmp_path):
         "imagenes": [
             {
                 "archivo": "datos/imagenes/candado/ejemplo.jpg",
-                "sha256": sha256(imagen_path),
+                "sha256": sha256(imagen_path, raiz, "datos/imagenes"),
                 "ancho": 20,
                 "alto": 20,
                 "estado": "propuesta_automatica",

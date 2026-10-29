@@ -2,7 +2,6 @@
 
 import argparse
 from collections import Counter
-import hashlib
 import html
 import json
 import math
@@ -13,54 +12,11 @@ import cv2
 
 from sivia_inventario.categorias import CATALOGO
 from sivia_inventario.imagenes import cargar_imagen
+from sivia_inventario.seguridad_archivos import resolver_ruta_controlada, sha256_archivo_controlado
 
 RAIZ = Path(__file__).resolve().parents[2]
 MANIFIESTO = RAIZ / "datos/anotaciones/ferreteria.json"
 EXTENSIONES_IMAGEN = {".bmp", ".jpeg", ".jpg", ".png", ".tif", ".tiff", ".webp"}
-
-
-def resolver_ruta_controlada(
-    ruta: str | Path,
-    raiz: Path = RAIZ,
-    directorio_autorizado: str | Path = ".",
-    *,
-    extensiones: set[str] | None = None,
-    debe_existir: bool = True,
-) -> Path:
-    """Resuelve una ruta únicamente dentro de una zona autorizada del proyecto.
-
-    Las rutas externas, ``..`` y cualquier enlace simbólico del recorrido se
-    rechazan. Las rutas absolutas solo son admisibles si ya se encuentran en la
-    zona autorizada; nunca se usan para salir del proyecto.
-    """
-    base = Path(raiz).resolve()
-    permitido = (base / directorio_autorizado).resolve()
-    entrada = Path(ruta)
-    if ".." in entrada.parts:
-        raise ValueError("No se permiten secuencias '..' en rutas de SIVIA.")
-    candidata_sin_resolver = entrada if entrada.is_absolute() else base / entrada
-    try:
-        candidata_absoluta = candidata_sin_resolver.absolute()
-        relativa = candidata_absoluta.relative_to(permitido)
-    except ValueError as error:
-        raise ValueError("La ruta está fuera del directorio autorizado de SIVIA.") from error
-
-    actual = permitido
-    for parte in relativa.parts:
-        actual = actual / parte
-        if actual.is_symlink():
-            raise ValueError("No se permiten enlaces simbólicos en rutas de SIVIA.")
-    try:
-        candidata = candidata_sin_resolver.resolve(strict=False)
-    except OSError as error:
-        raise ValueError("No se pudo resolver la ruta solicitada.") from error
-    if not candidata.is_relative_to(permitido):
-        raise ValueError("La ruta resuelta está fuera del directorio autorizado de SIVIA.")
-    if extensiones is not None and candidata.suffix.lower() not in extensiones:
-        raise ValueError("La extensión del archivo no está permitida.")
-    if debe_existir and not candidata.is_file():
-        raise ValueError("El archivo autorizado no existe o no es un archivo regular.")
-    return candidata
 
 
 def ruta_manifiesto_controlada(manifiesto: str | Path, raiz: Path = RAIZ) -> Path:
@@ -83,8 +39,13 @@ def ruta_imagen_controlada(archivo: object, raiz: Path = RAIZ) -> Path:
     )
 
 
-def sha256(ruta: Path) -> str:
-    return hashlib.sha256(ruta.read_bytes()).hexdigest()
+def sha256(
+    ruta: str | Path,
+    raiz: Path = RAIZ,
+    directorio_autorizado: str | Path = "datos",
+) -> str:
+    """Compatibilidad: calcula una huella solo tras validar la ubicación."""
+    return sha256_archivo_controlado(ruta, raiz, directorio_autorizado)
 
 
 def validar_caja(caja: list) -> tuple[float, float, float, float]:
@@ -145,7 +106,9 @@ def proponer_anotaciones(manifiesto: Path = MANIFIESTO, raiz: Path = RAIZ) -> in
             ruta_relativa = imagen_path.relative_to(raiz).as_posix()
             if ruta_relativa in existentes:
                 continue
-            imagen = cargar_imagen(ruta_imagen_controlada(ruta_relativa, raiz))
+            imagen = cargar_imagen(
+                ruta_relativa, raiz=raiz, directorio_autorizado="datos/imagenes"
+            )
             alto, ancho = imagen.shape[:2]
             numero = sum(1 for entrada in datos["imagenes"] if entrada.get("objetos") and entrada["objetos"][0].get("clase") == clase)
             grupo = f"{clase}_{imagen_path.stem}"
@@ -154,7 +117,7 @@ def proponer_anotaciones(manifiesto: Path = MANIFIESTO, raiz: Path = RAIZ) -> in
             datos["imagenes"].append(
                 {
                     "archivo": ruta_relativa,
-                    "sha256": sha256(ruta_imagen_controlada(ruta_relativa, raiz)),
+                    "sha256": sha256(ruta_relativa, raiz, "datos/imagenes"),
                     "ancho": ancho,
                     "alto": alto,
                     "origen": "aportada_por_usuario",
@@ -237,9 +200,9 @@ def auditar(
         if ruta in rutas:
             raise ValueError("Ruta fuera del proyecto o repetida.")
         rutas.add(ruta)
-        if sha256(ruta) != e.get("sha256"):
+        if sha256(ruta, raiz, "datos/imagenes") != e.get("sha256"):
             raise ValueError(f"La imagen cambió desde su anotación: {e['archivo']}")
-        imagen = cargar_imagen(ruta)
+        imagen = cargar_imagen(ruta, raiz=raiz, directorio_autorizado="datos/imagenes")
         if imagen.shape[:2] != (e.get("alto"), e.get("ancho")):
             raise ValueError(f"Dimensiones incorrectas: {e['archivo']}")
         if e.get("estado") == "excluida":
@@ -297,7 +260,7 @@ def auditar(
         "excluidas": excluidas,
         "propuestas_pendientes": propuestas,
         "advertencias": avisos,
-        "sha256_manifiesto": sha256(ruta_manifiesto),
+        "sha256_manifiesto": sha256(ruta_manifiesto, raiz, "datos"),
     }
     return datos, informe
 
@@ -322,7 +285,7 @@ def exportar(manifiesto: Path, salida: Path, raiz: Path = RAIZ) -> Path:
         nombre = f"{e['sha256'][:12]}_{origen.stem}"
         destino = salida / "images" / e["split"] / (nombre + origen.suffix.lower())
         shutil.copy2(origen, destino)
-        if sha256(destino) != e["sha256"]:
+        if sha256_archivo_controlado(destino, raiz, "datos/entrenamiento") != e["sha256"]:
             raise ValueError("La copia de la imagen no coincide con el original.")
         lineas = []
         for obj in e["objetos"]:
@@ -346,7 +309,7 @@ def generar_revision(manifiesto: Path, salida: Path, raiz: Path = RAIZ) -> Path:
     salida.mkdir(parents=True, exist_ok=True)
     tarjetas = []
     for i, e in enumerate(datos["imagenes"]):
-        imagen = cargar_imagen(ruta_imagen_controlada(e["archivo"], raiz))
+        imagen = cargar_imagen(e["archivo"], raiz=raiz, directorio_autorizado="datos/imagenes")
         h, w = imagen.shape[:2]
         for obj in e["objetos"]:
             x1, y1, x2, y2 = obj["xyxy"]

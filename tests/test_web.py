@@ -1,7 +1,7 @@
 from fastapi.testclient import TestClient
 import pytest
 
-from sivia_inventario.web import ESTATICOS, app, crear_audio_temporal, eliminar_audio_temporal, secreto_sesion
+from sivia_inventario.web import ESTATICOS, PLANTILLAS, app, crear_audio_temporal, eliminar_audio_temporal, secreto_sesion
 
 
 def test_produccion_exige_secreto_de_sesion(monkeypatch):
@@ -30,6 +30,24 @@ def test_recuperacion_contrasena_es_publica_y_exige_codigo_local():
     assert "usuario" in pagina_recuperacion.text
     assert intento.status_code == 400
     assert "No se pudo validar" in intento.text
+
+
+def test_formularios_de_acceso_no_fuerzan_autofoco():
+    for nombre in ("login.html", "recuperar_acceso.html", "recuperar_contrasena.html"):
+        plantilla = (PLANTILLAS / nombre).read_text(encoding="utf-8")
+        assert "autofocus" not in plantilla
+
+
+def test_revision_verificacion_asocia_selector_de_producto_a_etiqueta():
+    plantilla = (PLANTILLAS / "revision_verificacion.html").read_text(encoding="utf-8")
+    assert 'for="producto_{{ deteccion.id }}"' in plantilla
+    assert 'id="producto_{{ deteccion.id }}"' in plantilla
+
+
+def test_registro_de_audio_no_usa_metadatos_del_archivo_del_cliente():
+    codigo = (PLANTILLAS.parent / "web.py").read_text(encoding="utf-8")
+    assert 'REGISTRO.info("Audio recibido para transcripción: bytes=%d", len(contenido))' in codigo
+    assert "extension=%s" not in codigo
 
 
 def test_inicio_muestra_resumen_simulado():

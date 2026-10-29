@@ -504,15 +504,15 @@ async def transcribir_instruccion_voz(request: Request, audio: UploadFile | None
     contenido = await audio.read()
     ruta_temporal = None
     try:
-        # Solo se registra metadato normalizado; MIME y nombre son entrada del cliente.
-        REGISTRO.info("Audio recibido para transcripción: bytes=%d extension=%s", len(contenido), extension)
+        # No registrar nombre, MIME ni extensión: proceden del cliente.
+        REGISTRO.info("Audio recibido para transcripción: bytes=%d", len(contenido))
         ruta_temporal = await run_in_threadpool(crear_audio_temporal, contenido, extension)
         validar_audio(ruta_temporal, len(contenido))
         texto = await run_in_threadpool(transcribir_audio, ruta_temporal)
         return JSONResponse({"ok": True, "transcripcion": texto})
     except ErrorAudio as error:
         # El detalle puede contener texto proveniente del decodificador o archivo.
-        REGISTRO.warning("Audio no transcrito por validación o decodificación: extension=%s", extension)
+        REGISTRO.warning("Audio no transcrito por validación o decodificación.")
         return JSONResponse({"ok": False, "error": str(error)}, 400)
     except Exception:
         REGISTRO.exception("Error inesperado durante la transcripción de audio")

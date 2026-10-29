@@ -13,7 +13,7 @@
     <p>El c&oacute;digo vence, se utiliza una sola vez y no se guarda en texto plano.</p>
     {% if error %}<p class="error">{{ error }}</p>{% endif %}
     {% if mensaje %}<p class="mensaje-exito">{{ mensaje }}</p>{% endif %}
-    <label>Usuario<input name="usuario" value="{{ valores.usuario|default('') }}" autocomplete="username" required autofocus></label>
+    <label>Usuario<input name="usuario" value="{{ valores.usuario|default('') }}" autocomplete="username" required></label>
     <label>C&oacute;digo de recuperaci&oacute;n<input name="codigo_recuperacion" autocomplete="one-time-code" spellcheck="false" required></label>
     <label>Nueva contrase&ntilde;a<span class="campo-clave"><input name="nueva_contrasena" type="password" autocomplete="new-password" minlength="10" required><button type="button" data-ver-clave aria-label="Mostrar nueva contrase&ntilde;a">Ver</button></span></label>
     <label>Confirmar nueva contrase&ntilde;a<span class="campo-clave"><input name="confirmar_contrasena" type="password" autocomplete="new-password" minlength="10" required><button type="button" data-ver-clave aria-label="Mostrar confirmaci&oacute;n de contrase&ntilde;a">Ver</button></span></label>

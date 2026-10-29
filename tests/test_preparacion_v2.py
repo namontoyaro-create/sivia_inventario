@@ -2,6 +2,7 @@ import json
 
 import cv2
 import numpy as np
+import sivia_inventario.preparacion_v2 as preparacion_v2
 
 from sivia_inventario.preparacion_v2 import (
     SPLITS_APROBACIONES,
@@ -16,7 +17,14 @@ from sivia_inventario.preparacion_v2 import (
 import pytest
 
 
-def test_registrar_procedencia_conserva_reserva_test(tmp_path):
+def _usar_rutas_temporales(monkeypatch, raiz, manifiesto, propuestas, registro):
+    monkeypatch.setattr(preparacion_v2, "RAIZ", raiz)
+    monkeypatch.setattr(preparacion_v2, "MANIFIESTO", manifiesto)
+    monkeypatch.setattr(preparacion_v2, "PROPUESTAS_PENDIENTES", propuestas)
+    monkeypatch.setattr(preparacion_v2, "REGISTRO_NUEVAS", registro)
+
+
+def test_registrar_procedencia_conserva_reserva_test(tmp_path, monkeypatch):
     imagen = tmp_path / "datos" / "imagenes" / "disco_corte" / "nuevo.jpg"
     imagen.parent.mkdir(parents=True)
     imagen.write_bytes(b"imagen")
@@ -24,9 +32,8 @@ def test_registrar_procedencia_conserva_reserva_test(tmp_path):
     registro.parent.mkdir(parents=True)
     registro.write_text('{"imagenes": []}', encoding="utf-8")
 
-    registrar_procedencia_imagen(
-        "datos/imagenes/disco_corte/nuevo.jpg", "prueba_fisica", "disco_real_01", "test", registro, tmp_path
-    )
+    _usar_rutas_temporales(monkeypatch, tmp_path, registro, registro, registro)
+    registrar_procedencia_imagen("datos/imagenes/disco_corte/nuevo.jpg", "prueba_fisica", "disco_real_01", "test")
 
     datos = json.loads(registro.read_text(encoding="utf-8"))
     assert datos["imagenes"][0]["split_propuesto"] == "test"
@@ -91,7 +98,8 @@ def test_registrar_aprobaciones_conserva_clase_y_procedencia(tmp_path, monkeypat
     }]}), encoding="utf-8")
     monkeypatch.setitem(SPLITS_APROBACIONES, archivo, "train")
 
-    resumen = registrar_aprobaciones({archivo}, manifiesto, propuestas, tmp_path)
+    _usar_rutas_temporales(monkeypatch, tmp_path, manifiesto, propuestas, propuestas)
+    resumen = registrar_aprobaciones({archivo})
     registrado = json.loads(manifiesto.read_text(encoding="utf-8"))["imagenes"][0]
 
     assert resumen == {"imagenes_aprobadas": 1, "objetos_aprobados": 1, "pendientes": 0}
@@ -100,7 +108,7 @@ def test_registrar_aprobaciones_conserva_clase_y_procedencia(tmp_path, monkeypat
     assert registrado["objetos"][0]["clase"] == "candado"
 
 
-def test_registrar_aprobaciones_conserva_split_propuesto_para_nueva_foto(tmp_path):
+def test_registrar_aprobaciones_conserva_split_propuesto_para_nueva_foto(tmp_path, monkeypatch):
     archivo = "datos/imagenes/candado/escena_reservada_test.jpg"
     imagen = tmp_path / archivo
     imagen.parent.mkdir(parents=True)
@@ -115,14 +123,15 @@ def test_registrar_aprobaciones_conserva_split_propuesto_para_nueva_foto(tmp_pat
         "objetos": [{"clase": "candado", "xyxy": [0.1, 0.1, 0.9, 0.9]}],
     }]}), encoding="utf-8")
 
-    registrar_aprobaciones({archivo}, manifiesto, propuestas, tmp_path)
+    _usar_rutas_temporales(monkeypatch, tmp_path, manifiesto, propuestas, propuestas)
+    registrar_aprobaciones({archivo})
 
     registrado = json.loads(manifiesto.read_text(encoding="utf-8"))["imagenes"][0]
     assert registrado["split"] == "test"
 
 
 @pytest.mark.parametrize("accion", ["procedencia", "rectangulos", "rechazo", "aprobacion"])
-def test_operaciones_de_propuestas_rechazan_rutas_fuera_de_imagenes(tmp_path, accion):
+def test_operaciones_de_propuestas_rechazan_rutas_fuera_de_imagenes(tmp_path, monkeypatch, accion):
     raiz = tmp_path
     anotaciones = raiz / "datos" / "anotaciones"
     anotaciones.mkdir(parents=True)
@@ -130,13 +139,14 @@ def test_operaciones_de_propuestas_rechazan_rutas_fuera_de_imagenes(tmp_path, ac
     propuestas.write_text(json.dumps({"imagenes": []}), encoding="utf-8")
     manifiesto = anotaciones / "manifiesto.json"
     manifiesto.write_text(json.dumps({"imagenes": []}), encoding="utf-8")
+    _usar_rutas_temporales(monkeypatch, raiz, manifiesto, propuestas, propuestas)
 
     with pytest.raises(ValueError, match="secuencias '..'"):
         if accion == "procedencia":
-            registrar_procedencia_imagen("../secreto.jpg", "internet", "escena", "train", propuestas, raiz)
+            registrar_procedencia_imagen("../secreto.jpg", "internet", "escena", "train")
         elif accion == "rectangulos":
-            actualizar_rectangulos_propuesta("../secreto.jpg", [{"clase": "candado", "xyxy": [0.1, 0.1, 0.9, 0.9]}], propuestas)
+            actualizar_rectangulos_propuesta("../secreto.jpg", [{"clase": "candado", "xyxy": [0.1, 0.1, 0.9, 0.9]}])
         elif accion == "rechazo":
-            rechazar_propuesta("../secreto.jpg", "No corresponde", propuestas)
+            rechazar_propuesta("../secreto.jpg", "No corresponde")
         else:
-            registrar_aprobaciones({"../secreto.jpg"}, manifiesto, propuestas, raiz)
+            registrar_aprobaciones({"../secreto.jpg"})

@@ -7,9 +7,8 @@ puede verificarse con la imagen disponible.
 
 import argparse
 import json
-from pathlib import Path
-
-from sivia_inventario.dataset import MANIFIESTO, RAIZ, ruta_manifiesto_controlada
+from sivia_inventario.dataset import RAIZ
+from sivia_inventario.seguridad_archivos import leer_archivo_controlado
 
 
 EXCLUSIONES: dict[str, str] = {
@@ -47,10 +46,11 @@ SPLITS_CORREGIDOS = {
 }
 
 
-def aplicar_revision(manifiesto: Path = MANIFIESTO, raiz: Path = RAIZ) -> dict[str, int]:
-    """Aplica únicamente reglas internas a un manifiesto autorizado."""
-    ruta = ruta_manifiesto_controlada(manifiesto, raiz)
-    datos = json.loads(ruta.read_text(encoding="utf-8"))
+def aplicar_revision() -> dict[str, int]:
+    """Aplica reglas internas únicamente al manifiesto principal de SIVIA."""
+    ruta = RAIZ / "datos" / "anotaciones" / "ferreteria.json"
+    _, contenido = leer_archivo_controlado(ruta, RAIZ, "datos/anotaciones", extensiones={".json"})
+    datos = json.loads(contenido.decode("utf-8"))
     confirmadas = excluidas = splits = 0
     for entrada in datos["imagenes"]:
         archivo = entrada["archivo"]
@@ -78,9 +78,8 @@ def aplicar_revision(manifiesto: Path = MANIFIESTO, raiz: Path = RAIZ) -> dict[s
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Aplicar la revisión visual conservadora del dataset piloto")
-    parser.add_argument("--manifiesto", type=Path, default=MANIFIESTO)
-    args = parser.parse_args()
-    print(json.dumps(aplicar_revision(args.manifiesto), ensure_ascii=False))
+    parser.parse_args()
+    print(json.dumps(aplicar_revision(), ensure_ascii=False))
 
 
 if __name__ == "__main__":

@@ -103,7 +103,7 @@ def test_rechaza_json_mal_formado(tmp_path):
 
 
 def test_archivo_inexistente(tmp_path):
-    with pytest.raises(ValueError, match="no existe"):
+    with pytest.raises(ValueError, match="No se pudo leer"):
         cargar_stock_referencia(tmp_path / "datos" / "no_existe.json", CATALOGO, tmp_path)
 
 

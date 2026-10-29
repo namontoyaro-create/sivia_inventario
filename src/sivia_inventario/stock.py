@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from sivia_inventario.categorias import CATALOGO, ProductoCatalogo, validar_catalogo
-from sivia_inventario.seguridad_archivos import resolver_ruta_controlada
+from sivia_inventario.seguridad_archivos import leer_archivo_controlado
 
 
 RAIZ = Path(__file__).resolve().parents[2]
@@ -39,8 +39,11 @@ def cargar_stock_referencia(
     La lectura no modifica el archivo, el catálogo ni las existencias.
     """
     validar_catalogo(catalogo)
-    archivo = resolver_ruta_controlada(ruta, raiz, "datos", extensiones={".json"})
-    texto = archivo.read_text(encoding="utf-8-sig")
+    _, contenido = leer_archivo_controlado(ruta, raiz, "datos", extensiones={".json"})
+    try:
+        texto = contenido.decode("utf-8-sig")
+    except UnicodeDecodeError as error:
+        raise ValueError("El archivo de stock no usa codificación UTF-8 válida.") from error
     try:
         datos = json.loads(texto, object_pairs_hook=_objeto_sin_duplicados)
     except json.JSONDecodeError as error:

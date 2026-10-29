@@ -12,7 +12,11 @@ import cv2
 
 from sivia_inventario.categorias import CATALOGO
 from sivia_inventario.imagenes import cargar_imagen
-from sivia_inventario.seguridad_archivos import resolver_ruta_controlada, sha256_archivo_controlado
+from sivia_inventario.seguridad_archivos import (
+    leer_archivo_controlado,
+    resolver_ruta_controlada,
+    sha256_archivo_controlado,
+)
 
 RAIZ = Path(__file__).resolve().parents[2]
 MANIFIESTO = RAIZ / "datos/anotaciones/ferreteria.json"
@@ -46,6 +50,18 @@ def sha256(
 ) -> str:
     """Compatibilidad: calcula una huella solo tras validar la ubicación."""
     return sha256_archivo_controlado(ruta, raiz, directorio_autorizado)
+
+
+def cargar_manifiesto_controlado(ruta: str | Path, raiz: Path = RAIZ) -> dict:
+    """Lee JSON de manifiestos mediante la única primitiva de lectura segura."""
+    _, contenido = leer_archivo_controlado(ruta, raiz, "datos", extensiones={".json"})
+    try:
+        datos = json.loads(contenido.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as error:
+        raise ValueError("El manifiesto de SIVIA no contiene JSON UTF-8 válido.") from error
+    if not isinstance(datos, dict):
+        raise ValueError("El manifiesto de SIVIA debe contener un objeto JSON.")
+    return datos
 
 
 def validar_caja(caja: list) -> tuple[float, float, float, float]:
@@ -85,11 +101,15 @@ def proponer_caja(imagen) -> list[float]:
     ]
 
 
-def proponer_anotaciones(manifiesto: Path = MANIFIESTO, raiz: Path = RAIZ) -> int:
-    """Añade propuestas para imágenes nuevas, sin cambiar las ya anotadas."""
-    raiz = Path(raiz).resolve()
-    ruta_manifiesto = ruta_manifiesto_controlada(manifiesto, raiz)
-    datos = json.loads(ruta_manifiesto.read_text(encoding="utf-8"))
+def proponer_anotaciones() -> int:
+    """Añade propuestas al manifiesto principal interno, sin cambiar anotadas.
+
+    No recibe rutas desde CLI: la única escritura se limita al manifiesto
+    oficial ``datos/anotaciones/ferreteria.json``.
+    """
+    raiz = RAIZ
+    ruta_manifiesto = MANIFIESTO
+    datos = cargar_manifiesto_controlado(ruta_manifiesto, raiz)
     clases = [producto.clase_ia for producto in CATALOGO]
     existentes = {entrada["archivo"] for entrada in datos["imagenes"]}
     grupos = {}
@@ -184,7 +204,7 @@ def auditar(
 ) -> tuple[dict, dict]:
     raiz = Path(raiz).resolve()
     ruta_manifiesto = ruta_manifiesto_controlada(manifiesto, raiz)
-    datos = json.loads(ruta_manifiesto.read_text(encoding="utf-8"))
+    datos = cargar_manifiesto_controlado(ruta_manifiesto, raiz)
     clases = [p.clase_ia for p in CATALOGO]
     if datos.get("version") != 1 or datos.get("clases") != clases:
         raise ValueError("Versión o clases del manifiesto incompatibles con el catálogo.")
@@ -269,9 +289,7 @@ def exportar(manifiesto: Path, salida: Path, raiz: Path = RAIZ) -> Path:
     raiz = Path(raiz).resolve()
     datos, informe = auditar(manifiesto, raiz)
     ruta_manifiesto = ruta_manifiesto_controlada(manifiesto, raiz)
-    salida = resolver_ruta_controlada(
-        salida, raiz, "datos/entrenamiento", debe_existir=False
-    )
+    salida = resolver_ruta_controlada(salida, raiz, "datos/entrenamiento")
     if salida.exists():
         raise FileExistsError("La salida ya existe. Use --salida con una carpeta nueva; no se borrará nada.")
     salida.mkdir(parents=True)
@@ -305,7 +323,7 @@ def exportar(manifiesto: Path, salida: Path, raiz: Path = RAIZ) -> Path:
 def generar_revision(manifiesto: Path, salida: Path, raiz: Path = RAIZ) -> Path:
     raiz = Path(raiz).resolve()
     datos, informe = auditar(manifiesto, raiz, permitir_propuestas=True)
-    salida = resolver_ruta_controlada(salida, raiz, "resultados", debe_existir=False)
+    salida = resolver_ruta_controlada(salida, raiz, "resultados")
     salida.mkdir(parents=True, exist_ok=True)
     tarjetas = []
     for i, e in enumerate(datos["imagenes"]):
@@ -339,7 +357,7 @@ def main() -> None:
     args = parser.parse_args()
     try:
         if args.proponer:
-            print(f"Propuestas agregadas: {proponer_anotaciones(args.manifiesto)}")
+            print(f"Propuestas agregadas: {proponer_anotaciones()}")
         _, informe = auditar(
             args.manifiesto,
             permitir_propuestas=args.revision and not args.exportar,

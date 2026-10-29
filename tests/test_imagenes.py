@@ -19,7 +19,7 @@ def test_cargar_imagen_valida(tmp_path):
 def test_archivo_inexistente(tmp_path):
     ruta = tmp_path / "datos" / "imagenes" / "candado" / "no_existe.jpg"
     ruta.parent.mkdir(parents=True)
-    with pytest.raises(ValueError, match="no existe"):
+    with pytest.raises(ValueError, match="No se pudo leer"):
         cargar_imagen(ruta, raiz=tmp_path)
 
 

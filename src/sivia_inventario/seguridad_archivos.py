@@ -15,9 +15,14 @@ def resolver_ruta_controlada(
     directorio_autorizado: str | Path = ".",
     *,
     extensiones: set[str] | None = None,
-    debe_existir: bool = True,
 ) -> Path:
-    """Devuelve un archivo regular dentro de un único directorio permitido."""
+    """Normaliza una ruta dentro de un único directorio permitido.
+
+    La función no consulta si el archivo existe. Eso evita revelar el estado
+    del sistema de archivos a partir de una entrada externa. Las operaciones
+    de lectura usan :func:`leer_archivo_controlado`, que devuelve el mismo
+    error genérico ante archivos ausentes, directorios o permisos insuficientes.
+    """
     base = Path(raiz).resolve()
     permitido = (base / directorio_autorizado).resolve()
     entrada = Path(ruta)
@@ -29,11 +34,6 @@ def resolver_ruta_controlada(
         relativa = candidata_absoluta.relative_to(permitido)
     except ValueError as error:
         raise ValueError("La ruta está fuera del directorio autorizado de SIVIA.") from error
-    actual = permitido
-    for parte in relativa.parts:
-        actual = actual / parte
-        if actual.is_symlink():
-            raise ValueError("No se permiten enlaces simbólicos en rutas de SIVIA.")
     try:
         candidata = candidata_sin_resolver.resolve(strict=False)
     except OSError as error:
@@ -42,8 +42,6 @@ def resolver_ruta_controlada(
         raise ValueError("La ruta resuelta está fuera del directorio autorizado de SIVIA.")
     if extensiones is not None and candidata.suffix.lower() not in extensiones:
         raise ValueError("La extensión del archivo no está permitida.")
-    if debe_existir and not candidata.is_file():
-        raise ValueError("El archivo autorizado no existe o no es un archivo regular.")
     return candidata
 
 
@@ -53,7 +51,11 @@ def leer_archivo_controlado(
 ) -> tuple[Path, bytes]:
     """Valida una ruta y devuelve su contenido sin abrir rutas no verificadas."""
     archivo = resolver_ruta_controlada(ruta, raiz, directorio_autorizado, extensiones=extensiones)
-    return archivo, archivo.read_bytes()
+    try:
+        contenido = archivo.read_bytes()
+    except OSError as error:
+        raise ValueError("No se pudo leer un archivo autorizado de SIVIA.") from error
+    return archivo, contenido
 
 
 def sha256_archivo_controlado(

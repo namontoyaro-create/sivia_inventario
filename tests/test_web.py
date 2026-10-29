@@ -1,7 +1,7 @@
 from fastapi.testclient import TestClient
 import pytest
 
-from sivia_inventario.web import app, secreto_sesion
+from sivia_inventario.web import ESTATICOS, app, crear_audio_temporal, eliminar_audio_temporal, secreto_sesion
 
 
 def test_produccion_exige_secreto_de_sesion(monkeypatch):
@@ -112,3 +112,20 @@ def test_entrenamiento_ia_muestra_pantalla_de_revision():
     assert respuesta.status_code == 200
     assert "Entrenamiento IA" in respuesta.text
     assert "Plan de mejora del dataset" in respuesta.text
+
+
+def test_audio_temporal_se_puede_eliminar_despues_de_procesarlo():
+    ruta = crear_audio_temporal(b"audio de prueba", ".webm")
+    try:
+        assert ruta.is_file()
+        assert ruta.read_bytes() == b"audio de prueba"
+    finally:
+        eliminar_audio_temporal(ruta)
+
+    assert not ruta.exists()
+
+
+def test_javascript_de_voz_maneja_promesas_de_transcripcion():
+    script = (ESTATICOS / "asistente-voz.js").read_text(encoding="utf-8")
+
+    assert "void transcribir(archivo).catch" in script

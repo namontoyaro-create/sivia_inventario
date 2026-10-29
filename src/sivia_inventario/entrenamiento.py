@@ -7,7 +7,14 @@ from pathlib import Path
 import shutil
 
 from sivia_inventario.dataset import RAIZ, auditar, resolver_ruta_controlada, validar_caja
-from sivia_inventario.seguridad_archivos import sha256_archivo_controlado
+from sivia_inventario.seguridad_archivos import leer_archivo_controlado, sha256_archivo_controlado
+
+
+DATASETS_ENTRENAMIENTO = {
+    "piloto_v1": RAIZ / "datos" / "entrenamiento" / "pilotos" / "piloto_v1" / "data.yaml",
+    "piloto_v2": RAIZ / "datos" / "entrenamiento" / "pilotos" / "piloto_v2" / "data.yaml",
+    "v2_20261012": RAIZ / "datos" / "entrenamiento" / "pilotos" / "v2_20261012" / "data.yaml",
+}
 
 
 def ruta_configuracion_entrenamiento(config: str | Path) -> Path:
@@ -20,7 +27,8 @@ def ruta_configuracion_entrenamiento(config: str | Path) -> Path:
 def verificar_exportacion(config: Path) -> dict:
     """Comprueba que las imágenes y etiquetas exportadas corresponden al manifiesto."""
     config = ruta_configuracion_entrenamiento(config)
-    datos = json.loads(config.read_text(encoding="utf-8"))
+    _, contenido_config = leer_archivo_controlado(config, RAIZ, "datos/entrenamiento", extensions={".yaml", ".yml"})
+    datos = json.loads(contenido_config.decode("utf-8"))
     carpeta = config.parent
     if Path(datos.get("path", "")).resolve() != carpeta:
         raise ValueError("La ruta del dataset no coincide con la carpeta de exportación.")
@@ -52,7 +60,10 @@ def verificar_exportacion(config: Path) -> dict:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Entrenar un detector experimental de ferretería")
-    parser.add_argument("--datos", type=Path, default=RAIZ / "datos/entrenamiento/pilotos/piloto_v1/data.yaml")
+    parser.add_argument(
+        "--dataset", choices=sorted(DATASETS_ENTRENAMIENTO), default="piloto_v1",
+        help="Dataset experimental registrado por SIVIA; no acepta rutas arbitrarias.",
+    )
     parser.add_argument("--epocas", type=int, default=30)
     parser.add_argument("--tamano", type=int, default=320)
     parser.add_argument("--nombre", default="piloto", help="Prefijo aislado para resultados y pesos.")
@@ -63,7 +74,7 @@ def main() -> None:
     if not 1 <= args.epocas <= 300 or not 32 <= args.tamano <= 1280 or args.tamano % 32:
         parser.error("Épocas: 1–300. Tamaño: múltiplo de 32 entre 32 y 1280.")
     try:
-        datos_seguro = ruta_configuracion_entrenamiento(args.datos)
+        datos_seguro = DATASETS_ENTRENAMIENTO[args.dataset]
         informe = verificar_exportacion(datos_seguro)
         from ultralytics import YOLO, __version__ as version_yolo
         import torch

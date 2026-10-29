@@ -15,7 +15,11 @@ import cv2
 from sivia_inventario.categorias import CATALOGO
 from sivia_inventario.dataset import EXTENSIONES_IMAGEN, MANIFIESTO, RAIZ
 from sivia_inventario.imagenes import cargar_imagen
-from sivia_inventario.seguridad_archivos import resolver_ruta_controlada, sha256_archivo_controlado
+from sivia_inventario.seguridad_archivos import (
+    leer_archivo_controlado,
+    resolver_ruta_controlada,
+    sha256_archivo_controlado,
+)
 
 
 PREPARACION = RAIZ / "datos" / "anotaciones" / "preparacion_v2.json"
@@ -42,23 +46,27 @@ SPLITS_APROBACIONES = {
 METAS_V3 = {"train": 20, "val": 6, "test": 5}
 
 
-def ruta_anotacion_controlada(ruta: str | Path, raiz: Path = RAIZ) -> Path:
+def ruta_anotacion_controlada(ruta: str | Path, raiz: Path | None = None) -> Path:
+    raiz = raiz or RAIZ
     return resolver_ruta_controlada(ruta, raiz, "datos/anotaciones", extensiones={".json"})
 
 
-def ruta_imagen_controlada(archivo: str, raiz: Path = RAIZ) -> Path:
+def ruta_imagen_controlada(archivo: str, raiz: Path | None = None) -> Path:
     if not isinstance(archivo, str) or not archivo.strip():
         raise ValueError("La fotografía indicada no es válida.")
+    raiz = raiz or RAIZ
     return resolver_ruta_controlada(
         archivo, raiz, "datos/imagenes", extensiones=EXTENSIONES_IMAGEN
     )
 
 
-def cargar_json(ruta: str | Path, raiz: Path = RAIZ) -> dict:
+def cargar_json(ruta: str | Path, raiz: Path | None = None) -> dict:
+    raiz = raiz or RAIZ
     archivo = ruta_anotacion_controlada(ruta, raiz)
     try:
-        datos = json.loads(archivo.read_text(encoding="utf-8"))
-    except json.JSONDecodeError as error:
+        _, contenido = leer_archivo_controlado(archivo, raiz, "datos/anotaciones", extensiones={".json"})
+        datos = json.loads(contenido.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as error:
         raise ValueError("El archivo de anotaciones no contiene JSON válido.") from error
     if not isinstance(datos, dict):
         raise ValueError("El archivo de anotaciones debe contener un objeto JSON.")
@@ -133,22 +141,19 @@ def registrar_procedencia_imagen(
     origen: str,
     grupo_escena: str,
     split_propuesto: str,
-    registro: Path = REGISTRO_NUEVAS,
-    raiz: Path = RAIZ,
 ) -> None:
-    """Registra la procedencia y destino sin aprobar ni anotar la imagen."""
+    """Registra procedencia en el registro interno fijo de SIVIA."""
     if origen not in ORIGENES_VALIDOS or split_propuesto not in SPLITS_VALIDOS:
         raise ValueError("El origen o el destino propuesto no son válidos.")
-    raiz = Path(raiz).resolve()
-    ruta = ruta_imagen_controlada(archivo, raiz)
+    ruta = ruta_imagen_controlada(archivo)
     clase = ruta.parent.name
     if clase not in CLASES:
         raise ValueError("La carpeta de la fotografía no corresponde a una clase de SIVIA.")
     grupo = grupo_escena.strip()
     if not grupo:
         raise ValueError("Indica un grupo de escena para evitar fugas entre conjuntos.")
-    ruta_registro = ruta_anotacion_controlada(registro, raiz)
-    datos = cargar_json(ruta_registro, raiz)
+    ruta_registro = REGISTRO_NUEVAS
+    datos = cargar_json(ruta_registro)
     nueva = {
         "archivo": archivo,
         "clase_ia": clase,
@@ -172,7 +177,7 @@ def resumen_clases(objetos: list[dict]) -> str:
     return ", ".join(f"{cantidad} {clase}" for clase, cantidad in sorted(conteos.items()))
 
 
-def propuestas_pendientes(ruta: Path = PROPUESTAS_PENDIENTES, raiz: Path = RAIZ) -> list[dict]:
+def propuestas_pendientes(ruta: Path = PROPUESTAS_PENDIENTES, raiz: Path | None = None) -> list[dict]:
     """Obtiene solo las propuestas que aún esperan una decisión humana."""
     return [
         propuesta for propuesta in cargar_json(ruta, raiz).get("imagenes", [])
@@ -183,7 +188,6 @@ def propuestas_pendientes(ruta: Path = PROPUESTAS_PENDIENTES, raiz: Path = RAIZ)
 def actualizar_rectangulos_propuesta(
     archivo: str,
     objetos: list[dict],
-    ruta: Path = PROPUESTAS_PENDIENTES,
 ) -> None:
     """Actualiza una propuesta pendiente desde la interfaz, nunca el manifiesto."""
     from sivia_inventario.dataset import validar_caja
@@ -193,7 +197,7 @@ def actualizar_rectangulos_propuesta(
     for objeto in objetos:
         validar_caja(objeto.get("xyxy"))
     ruta_imagen_controlada(archivo)
-    ruta_propuestas = ruta_anotacion_controlada(ruta)
+    ruta_propuestas = PROPUESTAS_PENDIENTES
     datos = cargar_json(ruta_propuestas)
     for propuesta in datos.get("imagenes", []):
         if propuesta["archivo"] == archivo and propuesta.get("estado", "pendiente_revision_visual") == "pendiente_revision_visual":
@@ -204,12 +208,12 @@ def actualizar_rectangulos_propuesta(
     raise ValueError("No se encontró una propuesta pendiente para actualizar.")
 
 
-def rechazar_propuesta(archivo: str, motivo: str, ruta: Path = PROPUESTAS_PENDIENTES) -> None:
+def rechazar_propuesta(archivo: str, motivo: str) -> None:
     """Conserva una propuesta rechazada como historial, sin tocar imágenes."""
     if len(motivo) > 500:
         raise ValueError("El motivo de rechazo supera el límite permitido.")
     ruta_imagen_controlada(archivo)
-    ruta_propuestas = ruta_anotacion_controlada(ruta)
+    ruta_propuestas = PROPUESTAS_PENDIENTES
     datos = cargar_json(ruta_propuestas)
     for propuesta in datos.get("imagenes", []):
         if propuesta["archivo"] == archivo and propuesta.get("estado", "pendiente_revision_visual") == "pendiente_revision_visual":
@@ -222,22 +226,18 @@ def rechazar_propuesta(archivo: str, motivo: str, ruta: Path = PROPUESTAS_PENDIE
 
 def registrar_aprobaciones(
     archivos: set[str],
-    manifiesto: Path = MANIFIESTO,
-    propuestas: Path = PROPUESTAS_PENDIENTES,
-    raiz: Path = RAIZ,
 ) -> dict[str, int]:
-    """Incorpora únicamente propuestas aprobadas explícitamente por la persona usuaria."""
-    raiz = Path(raiz).resolve()
+    """Incorpora propuestas aprobadas en los dos manifiestos internos fijos."""
     if not archivos or len(archivos) > 100:
         raise ValueError("La cantidad de propuestas a aprobar no es válida.")
     if not all(isinstance(archivo, str) for archivo in archivos):
         raise ValueError("La propuesta indicada no es válida.")
     for archivo in archivos:
-        ruta_imagen_controlada(archivo, raiz)
-    ruta_manifiesto = ruta_anotacion_controlada(manifiesto, raiz)
-    ruta_propuestas = ruta_anotacion_controlada(propuestas, raiz)
-    datos_manifiesto = cargar_json(ruta_manifiesto, raiz)
-    datos_propuestas = cargar_json(ruta_propuestas, raiz)
+        ruta_imagen_controlada(archivo)
+    ruta_manifiesto = MANIFIESTO
+    ruta_propuestas = PROPUESTAS_PENDIENTES
+    datos_manifiesto = cargar_json(ruta_manifiesto)
+    datos_propuestas = cargar_json(ruta_propuestas)
     existentes = {entrada["archivo"] for entrada in datos_manifiesto["imagenes"]}
     nuevas, pendientes = [], []
     objetos_aprobados = 0
@@ -256,13 +256,13 @@ def registrar_aprobaciones(
         objetos = propuesta.get("objetos", [])
         if not objetos or any(objeto.get("clase") not in CLASES for objeto in objetos):
             raise ValueError(f"La propuesta no tiene clases válidas: {archivo}")
-        ruta_imagen = ruta_imagen_controlada(archivo, raiz)
-        imagen = cargar_imagen(archivo, raiz=raiz, directorio_autorizado="datos/imagenes")
+        ruta_imagen = ruta_imagen_controlada(archivo)
+        imagen = cargar_imagen(archivo, raiz=RAIZ, directorio_autorizado="datos/imagenes")
         alto, ancho = imagen.shape[:2]
         origen = propuesta.get("origen", "origen_no_confirmado")
         nuevas.append({
             "archivo": archivo,
-            "sha256": sha256_archivo_controlado(ruta_imagen, raiz, "datos/imagenes"),
+            "sha256": sha256_archivo_controlado(ruta_imagen, RAIZ, "datos/imagenes"),
             "ancho": ancho,
             "alto": alto,
             "origen": origen,
@@ -292,7 +292,7 @@ def generar_galeria_pendiente(
 ) -> Path:
     """Renderiza propuestas visuales que permanecen pendientes de aprobación."""
     datos = cargar_json(propuestas)
-    salida = resolver_ruta_controlada(salida, RAIZ, "resultados", debe_existir=False)
+    salida = resolver_ruta_controlada(salida, RAIZ, "resultados")
     salida.mkdir(parents=True, exist_ok=True)
     tarjetas = []
     for indice, entrada in enumerate(datos.get("imagenes", [])):

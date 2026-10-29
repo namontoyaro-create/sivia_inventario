@@ -36,8 +36,11 @@
     } catch (error) { mostrarError(error.message || 'No se pudo transcribir el audio.'); return; }
     procesando = false; cambiarControles(false);
   };
-  input.addEventListener('change', () => { const archivo = input.files?.[0]; if (archivo) transcribir(archivo); });
-  enviar.addEventListener('click', () => { const archivo = input.files?.[0]; if (archivo) transcribir(archivo); else mostrarError('selecciona o graba un audio antes de transcribir.'); });
+  const iniciarTranscripcion = (archivo) => {
+    void transcribir(archivo).catch((error) => mostrarError(error?.message || 'No se pudo transcribir el audio.'));
+  };
+  input.addEventListener('change', () => { const archivo = input.files?.[0]; if (archivo) iniciarTranscripcion(archivo); });
+  enviar.addEventListener('click', () => { const archivo = input.files?.[0]; if (archivo) iniciarTranscripcion(archivo); else mostrarError('selecciona o graba un audio antes de transcribir.'); });
   iniciar.addEventListener('click', async () => {
     try {
       flujo = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -50,7 +53,7 @@
         const tipo = grabador.mimeType || 'audio/webm';
         const blob = new Blob(partes, { type: tipo }); grabador = null;
         if (blob.size === 0) { mostrarError('no se generó audio válido. Revisa el permiso del micrófono.'); return; }
-        transcribir(new File([blob], `grabacion-${Date.now()}.webm`, { type: tipo }));
+        iniciarTranscripcion(new File([blob], `grabacion-${Date.now()}.webm`, { type: tipo }));
       };
       grabador.start(); estado.textContent = 'Grabando…'; iniciar.disabled = true; detener.disabled = false;
     } catch (_) { mostrarError('no se pudo acceder al micrófono. Autoriza el permiso o sube un audio.'); }

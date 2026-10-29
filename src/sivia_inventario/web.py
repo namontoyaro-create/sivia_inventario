@@ -222,6 +222,18 @@ def guardar_resultado_anotado(ruta_resultado: str | Path) -> tuple[str, str]:
     return f"datos/evidencias/{nombre}", f"/evidencias/{nombre}"
 
 
+def crear_audio_temporal(contenido: bytes, extension: str) -> Path:
+    """Escribe audio temporal fuera del ciclo asíncrono de la solicitud."""
+    with tempfile.NamedTemporaryFile(suffix=extension, delete=False) as temporal:
+        temporal.write(contenido)
+        return Path(temporal.name)
+
+
+def eliminar_audio_temporal(ruta: Path) -> None:
+    """Elimina evidencia temporal incluso después de un error de transcripción."""
+    ruta.unlink(missing_ok=True)
+
+
 @app.get("/configurar-acceso", response_class=HTMLResponse)
 def configurar_acceso(request: Request):
     if existen_usuarios():
@@ -494,9 +506,7 @@ async def transcribir_instruccion_voz(request: Request, audio: UploadFile | None
     try:
         # Solo se registra metadato normalizado; MIME y nombre son entrada del cliente.
         REGISTRO.info("Audio recibido para transcripción: bytes=%d extension=%s", len(contenido), extension)
-        with tempfile.NamedTemporaryFile(suffix=extension, delete=False) as temporal:
-            temporal.write(contenido)
-            ruta_temporal = Path(temporal.name)
+        ruta_temporal = await run_in_threadpool(crear_audio_temporal, contenido, extension)
         validar_audio(ruta_temporal, len(contenido))
         texto = await run_in_threadpool(transcribir_audio, ruta_temporal)
         return JSONResponse({"ok": True, "transcripcion": texto})
@@ -509,7 +519,7 @@ async def transcribir_instruccion_voz(request: Request, audio: UploadFile | None
         return JSONResponse({"ok": False, "error": "No se pudo procesar el audio. Intenta nuevamente."}, 500)
     finally:
         if ruta_temporal:
-            ruta_temporal.unlink(missing_ok=True)
+            await run_in_threadpool(eliminar_audio_temporal, ruta_temporal)
 
 
 @app.post("/asistente-voz/interpretar", response_class=HTMLResponse)

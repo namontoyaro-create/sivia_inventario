@@ -140,8 +140,18 @@ def test_operaciones_de_propuestas_rechazan_rutas_fuera_de_imagenes(tmp_path, mo
     manifiesto = anotaciones / "manifiesto.json"
     manifiesto.write_text(json.dumps({"imagenes": []}), encoding="utf-8")
     _usar_rutas_temporales(monkeypatch, raiz, manifiesto, propuestas, propuestas)
+    rutas_resueltas: list[str] = []
 
-    with pytest.raises(ValueError, match="secuencias '..'"):
+    def no_resolver_ruta_externa(archivo: str):
+        rutas_resueltas.append(archivo)
+        raise AssertionError("Una ruta enviada por el navegador no debe resolverse directamente.")
+
+    monkeypatch.setattr(preparacion_v2, "ruta_imagen_controlada", no_resolver_ruta_externa)
+
+    # Las decisiones web se resuelven contra la lista de propuestas ya
+    # cargada por el servidor. Una ruta manipulada no debe llegar al sistema
+    # de archivos ni revelar si existe fuera del directorio autorizado.
+    with pytest.raises(ValueError, match="no est[áa] disponible|no es válida"):
         if accion == "procedencia":
             registrar_procedencia_imagen("../secreto.jpg", "internet", "escena", "train")
         elif accion == "rectangulos":
@@ -150,3 +160,4 @@ def test_operaciones_de_propuestas_rechazan_rutas_fuera_de_imagenes(tmp_path, mo
             rechazar_propuesta("../secreto.jpg", "No corresponde")
         else:
             registrar_aprobaciones({"../secreto.jpg"})
+    assert rutas_resueltas == []

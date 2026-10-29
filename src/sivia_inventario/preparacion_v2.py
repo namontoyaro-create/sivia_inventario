@@ -74,12 +74,14 @@ def cargar_json(ruta: str | Path, raiz: Path | None = None) -> dict:
 
 
 def auditar_imagenes_nuevas(
-    manifiesto: Path = MANIFIESTO,
-    registro: Path = REGISTRO_NUEVAS,
-    raiz: Path = RAIZ,
+    manifiesto: Path | None = None,
+    registro: Path | None = None,
+    raiz: Path | None = None,
 ) -> dict:
     """Informa imágenes nuevas sin moverlas ni modificar su anotación."""
-    raiz = Path(raiz).resolve()
+    raiz = Path(raiz or RAIZ).resolve()
+    manifiesto = manifiesto or MANIFIESTO
+    registro = registro or REGISTRO_NUEVAS
     base = cargar_json(manifiesto, raiz)
     existentes = {entrada["archivo"] for entrada in base["imagenes"]}
     hashes_existentes = {entrada["sha256"] for entrada in base["imagenes"]}
@@ -145,10 +147,14 @@ def registrar_procedencia_imagen(
     """Registra procedencia en el registro interno fijo de SIVIA."""
     if origen not in ORIGENES_VALIDOS or split_propuesto not in SPLITS_VALIDOS:
         raise ValueError("El origen o el destino propuesto no son válidos.")
-    ruta = ruta_imagen_controlada(archivo)
-    clase = ruta.parent.name
-    if clase not in CLASES:
-        raise ValueError("La carpeta de la fotografía no corresponde a una clase de SIVIA.")
+    candidatas = {
+        entrada["archivo"]: entrada
+        for entrada in auditar_imagenes_nuevas()["nuevas_pendientes_revision"]
+    }
+    candidata = candidatas.get(archivo)
+    if candidata is None:
+        raise ValueError("La fotografía no está disponible para registrar procedencia.")
+    clase = candidata["clase_ia"]
     grupo = grupo_escena.strip()
     if not grupo:
         raise ValueError("Indica un grupo de escena para evitar fugas entre conjuntos.")
@@ -177,6 +183,19 @@ def resumen_clases(objetos: list[dict]) -> str:
     return ", ".join(f"{cantidad} {clase}" for clase, cantidad in sorted(conteos.items()))
 
 
+def propuesta_pendiente_por_archivo(datos: dict, archivo: object) -> dict:
+    """Resuelve una decisión web contra propuestas ya cargadas por el servidor."""
+    if not isinstance(archivo, str):
+        raise ValueError("La propuesta indicada no es válida.")
+    for propuesta in datos.get("imagenes", []):
+        if (
+            propuesta.get("archivo") == archivo
+            and propuesta.get("estado", "pendiente_revision_visual") == "pendiente_revision_visual"
+        ):
+            return propuesta
+    raise ValueError("La propuesta indicada no está disponible para esta operación.")
+
+
 def propuestas_pendientes(ruta: Path = PROPUESTAS_PENDIENTES, raiz: Path | None = None) -> list[dict]:
     """Obtiene solo las propuestas que aún esperan una decisión humana."""
     return [
@@ -192,36 +211,28 @@ def actualizar_rectangulos_propuesta(
     """Actualiza una propuesta pendiente desde la interfaz, nunca el manifiesto."""
     from sivia_inventario.dataset import validar_caja
 
+    ruta_propuestas = PROPUESTAS_PENDIENTES
+    datos = cargar_json(ruta_propuestas)
+    propuesta = propuesta_pendiente_por_archivo(datos, archivo)
     if not objetos or any(objeto.get("clase") not in CLASES for objeto in objetos):
         raise ValueError("La propuesta debe conservar objetos de clases válidas.")
     for objeto in objetos:
         validar_caja(objeto.get("xyxy"))
-    ruta_imagen_controlada(archivo)
-    ruta_propuestas = PROPUESTAS_PENDIENTES
-    datos = cargar_json(ruta_propuestas)
-    for propuesta in datos.get("imagenes", []):
-        if propuesta["archivo"] == archivo and propuesta.get("estado", "pendiente_revision_visual") == "pendiente_revision_visual":
-            propuesta["objetos"] = objetos
-            propuesta["nota_revision"] = "Rectángulos ajustados manualmente desde Entrenamiento IA; pendiente de aprobación."
-            ruta_propuestas.write_text(json.dumps(datos, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-            return
-    raise ValueError("No se encontró una propuesta pendiente para actualizar.")
+    propuesta["objetos"] = objetos
+    propuesta["nota_revision"] = "Rectángulos ajustados manualmente desde Entrenamiento IA; pendiente de aprobación."
+    ruta_propuestas.write_text(json.dumps(datos, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 
 def rechazar_propuesta(archivo: str, motivo: str) -> None:
     """Conserva una propuesta rechazada como historial, sin tocar imágenes."""
     if len(motivo) > 500:
         raise ValueError("El motivo de rechazo supera el límite permitido.")
-    ruta_imagen_controlada(archivo)
     ruta_propuestas = PROPUESTAS_PENDIENTES
     datos = cargar_json(ruta_propuestas)
-    for propuesta in datos.get("imagenes", []):
-        if propuesta["archivo"] == archivo and propuesta.get("estado", "pendiente_revision_visual") == "pendiente_revision_visual":
-            propuesta["estado"] = "rechazada_usuario"
-            propuesta["motivo_rechazo"] = motivo.strip() or "Rechazada desde Entrenamiento IA."
-            ruta_propuestas.write_text(json.dumps(datos, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-            return
-    raise ValueError("No se encontró una propuesta pendiente para rechazar.")
+    propuesta = propuesta_pendiente_por_archivo(datos, archivo)
+    propuesta["estado"] = "rechazada_usuario"
+    propuesta["motivo_rechazo"] = motivo.strip() or "Rechazada desde Entrenamiento IA."
+    ruta_propuestas.write_text(json.dumps(datos, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 
 def registrar_aprobaciones(
@@ -232,12 +243,14 @@ def registrar_aprobaciones(
         raise ValueError("La cantidad de propuestas a aprobar no es válida.")
     if not all(isinstance(archivo, str) for archivo in archivos):
         raise ValueError("La propuesta indicada no es válida.")
-    for archivo in archivos:
-        ruta_imagen_controlada(archivo)
     ruta_manifiesto = MANIFIESTO
     ruta_propuestas = PROPUESTAS_PENDIENTES
     datos_manifiesto = cargar_json(ruta_manifiesto)
     datos_propuestas = cargar_json(ruta_propuestas)
+    propuestas_aprobadas = {
+        archivo: propuesta_pendiente_por_archivo(datos_propuestas, archivo)
+        for archivo in archivos
+    }
     existentes = {entrada["archivo"] for entrada in datos_manifiesto["imagenes"]}
     nuevas, pendientes = [], []
     objetos_aprobados = 0
@@ -256,8 +269,9 @@ def registrar_aprobaciones(
         objetos = propuesta.get("objetos", [])
         if not objetos or any(objeto.get("clase") not in CLASES for objeto in objetos):
             raise ValueError(f"La propuesta no tiene clases válidas: {archivo}")
-        ruta_imagen = ruta_imagen_controlada(archivo)
-        imagen = cargar_imagen(archivo, raiz=RAIZ, directorio_autorizado="datos/imagenes")
+        propuesta = propuestas_aprobadas[archivo]
+        ruta_imagen = ruta_imagen_controlada(propuesta["archivo"])
+        imagen = cargar_imagen(propuesta["archivo"], raiz=RAIZ, directorio_autorizado="datos/imagenes")
         alto, ancho = imagen.shape[:2]
         origen = propuesta.get("origen", "origen_no_confirmado")
         nuevas.append({
@@ -276,8 +290,7 @@ def registrar_aprobaciones(
         })
         objetos_aprobados += len(objetos)
     if len(nuevas) != len(archivos):
-        faltantes = archivos - {entrada["archivo"] for entrada in nuevas}
-        raise ValueError(f"No se encontraron propuestas para: {', '.join(sorted(faltantes))}")
+        raise ValueError("No se pudo preparar una o más propuestas aprobadas.")
     datos_manifiesto["imagenes"].extend(nuevas)
     datos_propuestas["imagenes"] = pendientes
     datos_propuestas["descripcion"] = "Solo conserva propuestas pendientes de revisión y aprobación humana."

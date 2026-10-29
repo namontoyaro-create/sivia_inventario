@@ -27,7 +27,9 @@ def ruta_configuracion_entrenamiento(config: str | Path) -> Path:
 def verificar_exportacion(config: Path) -> dict:
     """Comprueba que las imágenes y etiquetas exportadas corresponden al manifiesto."""
     config = ruta_configuracion_entrenamiento(config)
-    _, contenido_config = leer_archivo_controlado(config, RAIZ, "datos/entrenamiento", extensions={".yaml", ".yml"})
+    _, contenido_config = leer_archivo_controlado(
+        config, RAIZ, "datos/entrenamiento", extensiones={".yaml", ".yml"}
+    )
     datos = json.loads(contenido_config.decode("utf-8"))
     carpeta = config.parent
     if Path(datos.get("path", "")).resolve() != carpeta:

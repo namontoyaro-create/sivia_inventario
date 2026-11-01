@@ -62,6 +62,27 @@ def test_registro_de_audio_no_usa_metadatos_del_archivo_del_cliente():
     assert "extension=%s" not in codigo
 
 
+def test_base_usa_iconos_svg_locales_y_dashboard_no_tiene_textos_danados():
+    base = (PLANTILLAS / "base.html").read_text(encoding="utf-8")
+    inicio = (PLANTILLAS / "inicio.html").read_text(encoding="utf-8")
+
+    assert '/static/iconos.svg#inicio' in base
+    assert '/static/iconos.svg#microfono' in base
+    assert 'Informaci?n' not in inicio
+    assert 'cat?logo' not in inicio
+    assert 'categor?a' not in inicio
+    assert '>?</' not in inicio
+
+    with TestClient(app) as cliente:
+        iconos = cliente.get("/static/iconos.svg")
+        estilos = cliente.get("/static/fundacion-visual.css")
+
+    assert iconos.status_code == 200
+    assert 'id="inventario"' in iconos.text
+    assert estilos.status_code == 200
+    assert ".icono-sistema" in estilos.text
+
+
 def test_inicio_muestra_resumen_simulado():
     with TestClient(app) as cliente:
         respuesta = cliente.get("/")

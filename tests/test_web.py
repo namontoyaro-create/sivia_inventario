@@ -1,7 +1,7 @@
 from fastapi.testclient import TestClient
 import pytest
 
-from sivia_inventario.web import ESTATICOS, PLANTILLAS, app, crear_audio_temporal, eliminar_audio_temporal, secreto_sesion
+from sivia_inventario.web import ESTATICOS, PLANTILLAS, app, crear_audio_temporal, eliminar_audio_temporal, preparar_directorios_web, secreto_sesion
 
 
 def test_produccion_exige_secreto_de_sesion(monkeypatch):
@@ -30,6 +30,18 @@ def test_recuperacion_contrasena_es_publica_y_exige_codigo_local():
     assert "usuario" in pagina_recuperacion.text
     assert intento.status_code == 400
     assert "No se pudo validar" in intento.text
+
+
+def test_prepara_carpetas_operativas_para_un_despliegue_limpio(tmp_path):
+    rutas = preparar_directorios_web(tmp_path)
+
+    assert {ruta.relative_to(tmp_path).as_posix() for ruta in rutas} == {
+        "datos/productos",
+        "datos/evidencias",
+        "datos/imagenes",
+        "resultados/revision_anotaciones_pendientes",
+    }
+    assert all(ruta.is_dir() for ruta in rutas)
 
 
 def test_formularios_de_acceso_no_fuerzan_autofoco():

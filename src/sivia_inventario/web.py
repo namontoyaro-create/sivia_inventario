@@ -45,11 +45,33 @@ PLANTILLAS = RAIZ / "src" / "sivia_inventario" / "plantillas"
 ESTATICOS = RAIZ / "src" / "sivia_inventario" / "estaticos"
 CARPETA_PRODUCTOS = RAIZ / "datos" / "productos"
 CARPETA_EVIDENCIAS = RAIZ / "datos" / "evidencias"
+CARPETA_IMAGENES = RAIZ / "datos" / "imagenes"
 EXTENSIONES_IMAGEN = {".jpg", ".jpeg", ".png", ".webp"}
 MAXIMO_IMAGEN_BYTES = 5 * 1024 * 1024
 MAXIMO_RECTANGULOS_POR_PROPUESTA = 100
-CARPETA_PRODUCTOS.mkdir(parents=True, exist_ok=True)
-CARPETA_EVIDENCIAS.mkdir(parents=True, exist_ok=True)
+
+
+def preparar_directorios_web(raiz: Path | None = None) -> tuple[Path, ...]:
+    """Crea solo directorios operativos vacíos requeridos por los montajes.
+
+    Las galerías, evidencias y fotos subidas son datos generados localmente e
+    ignorados por Git. En un despliegue limpio deben existir antes de crear
+    StaticFiles. No crea plantillas ni estáticos fuente: su ausencia sigue
+    siendo un error de empaquetado que debe hacerse visible.
+    """
+    base = Path(raiz or RAIZ)
+    rutas = (
+        base / "datos" / "productos",
+        base / "datos" / "evidencias",
+        base / "datos" / "imagenes",
+        base / "resultados" / "revision_anotaciones_pendientes",
+    )
+    for ruta in rutas:
+        ruta.mkdir(parents=True, exist_ok=True)
+    return rutas
+
+
+preparar_directorios_web()
 
 
 def contexto_voz(request: Request, **extra):
@@ -72,7 +94,7 @@ app.mount("/static", StaticFiles(directory=ESTATICOS), name="static")
 app.mount("/productos", StaticFiles(directory=CARPETA_PRODUCTOS), name="productos")
 app.mount("/evidencias", StaticFiles(directory=CARPETA_EVIDENCIAS), name="evidencias")
 app.mount("/revision-pendiente", StaticFiles(directory=GALERIA_PENDIENTES), name="revision-pendiente")
-app.mount("/imagenes", StaticFiles(directory=RAIZ / "datos" / "imagenes"), name="imagenes")
+app.mount("/imagenes", StaticFiles(directory=CARPETA_IMAGENES), name="imagenes")
 
 def contexto_global(request: Request) -> dict:
     usuario = request.session.get("usuario")

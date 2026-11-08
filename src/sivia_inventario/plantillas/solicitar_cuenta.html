@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block titulo %}Solicitar cuenta{% endblock %}
+{% block extra_head %}<link rel="stylesheet" href="/static/acceso.css">{% endblock %}
+{% block contenido %}
+<section class="acceso">
+  <div class="acceso-marca"><b>&#9673;</b><h1>SIVIA</h1><p>Solicita acceso al sistema.</p><p class="acceso-nota">Una solicitud no activa una cuenta ni concede permisos. Un administrador debe revisarla.</p></div>
+  <form class="panel acceso-formulario" method="post" action="/solicitar-cuenta">
+    <h2>Solicitar una cuenta</h2><p>Indica el usuario que deseas usar. No escribas contraseñas en esta solicitud.</p>
+    {% if error %}<p class="error">{{ error }}</p>{% endif %}{% if mensaje %}<p class="mensaje-exito">{{ mensaje }}</p>{% endif %}
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label>Nombre completo<input name="nombre" value="{{ valores.nombre|default('') }}" autocomplete="name" required></label>
+    <label>Usuario solicitado<input name="usuario" value="{{ valores.usuario|default('') }}" autocomplete="username" required></label>
+    <label>Motivo de la solicitud<textarea name="motivo" maxlength="500" rows="4">{{ valores.motivo|default('') }}</textarea></label>
+    <button class="boton primario" type="submit">Enviar solicitud</button>
+    <p class="acceso-enlace"><a href="/login">&larr; Volver a iniciar sesión</a></p>
+  </form>
+</section>
+{% endblock %}

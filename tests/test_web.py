@@ -1,5 +1,6 @@
 from fastapi.testclient import TestClient
 import pytest
+import re
 
 from sivia_inventario.web import ESTATICOS, PLANTILLAS, app, crear_audio_temporal, eliminar_audio_temporal, preparar_directorios_web, secreto_sesion
 
@@ -16,10 +17,12 @@ def test_recuperacion_contrasena_es_publica_y_exige_codigo_local():
     with TestClient(app) as cliente:
         pagina_login = cliente.get("/login")
         pagina_recuperacion = cliente.get("/recuperar-acceso")
+        token = re.search(r'name="csrf_token" value="([^"]+)"', pagina_recuperacion.text).group(1)
         intento = cliente.post("/recuperar-acceso", data={
             "codigo_recuperacion": "codigo-invalido",
             "nueva_contrasena": "ClaveSegura12",
             "confirmar_contrasena": "ClaveSegura12",
+            "csrf_token": token,
         })
 
     assert pagina_login.status_code == 200
@@ -30,6 +33,41 @@ def test_recuperacion_contrasena_es_publica_y_exige_codigo_local():
     assert "usuario" in pagina_recuperacion.text
     assert intento.status_code == 400
     assert "No se pudo validar" in intento.text
+
+
+def test_login_permanece_publico_y_la_configuracion_inicial_exige_token(monkeypatch):
+    import sivia_inventario.web as web
+
+    monkeypatch.setattr(web, "existen_usuarios", lambda: False)
+    monkeypatch.setenv("SIVIA_BOOTSTRAP_TOKEN", "codigo-bootstrap-prueba")
+    with TestClient(app) as cliente:
+        pagina_login = cliente.get("/login")
+        pagina_configuracion = cliente.get("/configurar-acceso")
+        token = re.search(r'name="csrf_token" value="([^"]+)"', pagina_configuracion.text).group(1)
+        rechazo = cliente.post("/configurar-acceso", data={
+            "csrf_token": token, "codigo_configuracion": "incorrecto", "nombre": "Admin Prueba",
+            "usuario": "admin.prueba", "contrasena": "ClaveSegura10", "confirmar_contrasena": "ClaveSegura10",
+        })
+
+    assert pagina_login.status_code == 200
+    assert "Configuración inicial autorizada" in pagina_login.text
+    assert rechazo.status_code == 403
+
+
+def test_solicitar_cuenta_exige_csrf_y_no_asigna_rol(monkeypatch):
+    import sivia_inventario.web as web
+
+    llamadas = []
+    monkeypatch.setattr(web, "solicitar_cuenta", lambda usuario, nombre, motivo: llamadas.append((usuario, nombre, motivo)))
+    with TestClient(app) as cliente:
+        pagina = cliente.get("/solicitar-cuenta")
+        token = re.search(r'name="csrf_token" value="([^"]+)"', pagina.text).group(1)
+        respuesta = cliente.post("/solicitar-cuenta", data={
+            "csrf_token": token, "usuario": "nuevo.operador", "nombre": "Nuevo Operador", "motivo": "Prácticas",
+        })
+
+    assert respuesta.status_code == 200
+    assert llamadas == [("nuevo.operador", "Nuevo Operador", "Prácticas")]
 
 
 def test_prepara_carpetas_operativas_para_un_despliegue_limpio(tmp_path):

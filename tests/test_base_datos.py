@@ -1,4 +1,6 @@
-from sivia_inventario.base_datos import inicializar_base_datos
+import pytest
+
+from sivia_inventario.base_datos import inicializar_base_datos, ruta_base_datos_configurada
 from sivia_inventario.repositorio_inventario import listar_productos, resumen_dashboard
 
 
@@ -20,6 +22,16 @@ def test_inicializa_catalogo_y_stock_simulado(tmp_path):
         "verificaciones": 0,
         "diferencias": 0,
     }
+
+
+def test_ruta_base_datos_configurable_exige_ruta_absoluta(monkeypatch, tmp_path):
+    ruta = tmp_path / "externa.db"
+    monkeypatch.setenv("SIVIA_DB_PATH", str(ruta))
+    assert ruta_base_datos_configurada() == ruta.resolve()
+
+    monkeypatch.setenv("SIVIA_DB_PATH", "relativa.db")
+    with pytest.raises(RuntimeError, match="ruta absoluta"):
+        ruta_base_datos_configurada()
 
 
 def test_inicializar_no_sobrescribe_stock_existente(tmp_path):
@@ -59,6 +71,6 @@ def test_migracion_respalda_base_existente_y_conserva_productos(tmp_path):
         columnas = {fila[1] for fila in conexion.execute("PRAGMA table_info(productos)")}
         versiones = [fila[0] for fila in conexion.execute("SELECT version FROM versiones_esquema ORDER BY version")]
     assert {"sku", "codigo_barras", "proveedor", "precio_compra", "precio_venta", "stock_minimo", "unidad_medida", "estado_producto"}.issubset(columnas)
-    assert versiones == [1, 2, 3]
+    assert versiones == [1, 2, 3, 4]
     assert [p.stock_registrado for p in listar_productos(ruta) if p.id == "P900"] == [12]
     assert inicializar_base_datos(ruta) is None

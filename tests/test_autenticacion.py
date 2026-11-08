@@ -1,7 +1,9 @@
+import pytest
+
 from sivia_inventario.autenticacion import (
-    autenticar, cambiar_contrasena, crear_usuario,
+    autenticar, cambiar_contrasena, crear_primer_administrador, crear_usuario,
     generar_codigo_recuperacion_local, identificar_administrador_local,
-    restablecer_contrasena_con_codigo,
+    listar_solicitudes_cuenta, restablecer_contrasena_con_codigo, solicitar_cuenta,
 )
 from sivia_inventario.base_datos import inicializar_base_datos
 
@@ -71,3 +73,25 @@ def test_identificar_administrador_local_no_exhibe_otros_roles(tmp_path):
     administrador = identificar_administrador_local(ruta)
 
     assert administrador.usuario == "admin.local"
+
+
+def test_primer_administrador_es_unico_y_conserva_roles(tmp_path):
+    ruta = tmp_path / "sivia.db"
+    inicializar_base_datos(ruta)
+
+    creado = crear_primer_administrador("admin.inicial", "Admin Inicial", "ClaveSegura10", ruta)
+
+    assert creado.rol == "administrador"
+    with pytest.raises(ValueError, match="configuración inicial"):
+        crear_primer_administrador("otro.admin", "Otro Admin", "ClaveSegura10", ruta)
+
+
+def test_solicitud_de_cuenta_no_crea_ni_activa_un_usuario(tmp_path):
+    ruta = tmp_path / "sivia.db"
+    inicializar_base_datos(ruta)
+
+    solicitar_cuenta("operador.solicita", "Operador Solicita", "Apoyaré en conteos", ruta)
+
+    pendientes = listar_solicitudes_cuenta(ruta)
+    assert pendientes[0]["usuario_solicitado"] == "operador.solicita"
+    assert autenticar("operador.solicita", "ClaveSegura10", ruta) is None

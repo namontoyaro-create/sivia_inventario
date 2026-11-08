@@ -1,6 +1,21 @@
 {% extends "base.html" %}
-{% block titulo %}Configurar acceso{% endblock %}
+{% block titulo %}Configuración inicial{% endblock %}
 {% block extra_head %}<link rel="stylesheet" href="/static/acceso.css">{% endblock %}
 {% block contenido %}
-<section class="acceso"><div class="acceso-marca"><b>◉</b><h1>Bienvenida a SIVIA</h1><p>Crea la primera cuenta administradora para proteger el inventario.</p></div><form class="panel acceso-formulario" method="post" action="/configurar-acceso"><h2>Configurar administrador</h2><p>Esta cuenta podrá crear usuarios para operadores y auditores.</p>{% if error %}<p class="error">{{ error }}</p>{% endif %}<label>Nombre completo<input name="nombre" value="{{ valores.nombre|default('') }}" autocomplete="name" required></label><label>Usuario<input name="usuario" value="{{ valores.usuario|default('') }}" autocomplete="username" required></label><label>Contraseña<input name="contrasena" type="password" autocomplete="new-password" minlength="10" required></label><label>Confirmar contraseña<input name="confirmar_contrasena" type="password" autocomplete="new-password" minlength="10" required></label><button class="boton primario" type="submit">Crear acceso seguro</button></form></section>
+<section class="acceso">
+  <div class="acceso-marca"><b>&#9673;</b><h1>SIVIA</h1><p>Configuración inicial autorizada.</p><p class="acceso-nota">Esta operación solo se permite una vez y no crea cuentas si ya existe un usuario.</p></div>
+  <form class="panel acceso-formulario" method="post" action="/configurar-acceso">
+    <h2>Configurar administrador</h2><p>Introduce el código definido localmente en <code>SIVIA_BOOTSTRAP_TOKEN</code>.</p>
+    {% if error %}<p class="error">{{ error }}</p>{% endif %}
+    {% if not bootstrap_configurado %}<p class="error">La configuración inicial no está habilitada. Define SIVIA_BOOTSTRAP_TOKEN en el entorno autorizado.</p>{% endif %}
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label>Código de configuración<input name="codigo_configuracion" type="password" autocomplete="off" required></label>
+    <label>Nombre completo<input name="nombre" value="{{ valores.nombre|default('') }}" autocomplete="name" required></label>
+    <label>Usuario<input name="usuario" value="{{ valores.usuario|default('') }}" autocomplete="username" required></label>
+    <label>Contraseña<input name="contrasena" type="password" autocomplete="new-password" minlength="10" required></label>
+    <label>Confirmar contraseña<input name="confirmar_contrasena" type="password" autocomplete="new-password" minlength="10" required></label>
+    <button class="boton primario" type="submit" {% if not bootstrap_configurado %}disabled{% endif %}>Crear acceso seguro</button>
+    <p class="acceso-enlace"><a href="/login">&larr; Volver a iniciar sesión</a></p>
+  </form>
+</section>
 {% endblock %}

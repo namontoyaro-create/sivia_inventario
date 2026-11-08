@@ -77,6 +77,11 @@ def crear_usuario(usuario: str, nombre: str, rol: str, contrasena: str,
                 "INSERT INTO usuarios(usuario,nombre,rol,password_hash,password_salt) VALUES (?,?,?,?,?)",
                 (usuario, nombre, rol, _derivar(contrasena, sal), sal.hex()),
             )
+            conexion.execute(
+                "UPDATE solicitudes_cuenta SET estado='revisada', revisada_en=CURRENT_TIMESTAMP "
+                "WHERE usuario_solicitado=? AND estado='pendiente'",
+                (usuario,),
+            )
             fila = conexion.execute("SELECT * FROM usuarios WHERE id=?", (cursor.lastrowid,)).fetchone()
     except Exception as error:
         if "UNIQUE constraint failed" in str(error):
@@ -85,6 +90,62 @@ def crear_usuario(usuario: str, nombre: str, rol: str, contrasena: str,
     resultado = _fila_usuario(fila)
     assert resultado
     return resultado
+
+
+def crear_primer_administrador(usuario: str, nombre: str, contrasena: str,
+                               ruta: Path = RUTA_BASE_DATOS) -> Usuario:
+    """Crea el único administrador inicial bajo un bloqueo SQLite.
+
+    La comprobación y la inserción comparten una transacción inmediata para
+    impedir que dos solicitudes públicas creen administradores simultáneos.
+    """
+    usuario, nombre = _validar(usuario, nombre, "administrador", contrasena)
+    sal = secrets.token_bytes(16)
+    with conectar(ruta) as conexion:
+        conexion.execute("BEGIN IMMEDIATE")
+        if conexion.execute("SELECT 1 FROM usuarios LIMIT 1").fetchone():
+            raise ValueError("La configuración inicial ya fue completada.")
+        cursor = conexion.execute(
+            "INSERT INTO usuarios(usuario,nombre,rol,password_hash,password_salt) VALUES (?,?,?,?,?)",
+            (usuario, nombre, "administrador", _derivar(contrasena, sal), sal.hex()),
+        )
+        fila = conexion.execute("SELECT * FROM usuarios WHERE id=?", (cursor.lastrowid,)).fetchone()
+    resultado = _fila_usuario(fila)
+    assert resultado
+    return resultado
+
+
+def solicitar_cuenta(usuario: str, nombre: str, motivo: str = "",
+                     ruta: Path = RUTA_BASE_DATOS) -> None:
+    """Registra una solicitud pendiente; nunca activa usuarios ni asigna roles."""
+    usuario = usuario.strip().lower()
+    nombre = nombre.strip()
+    motivo = motivo.strip()
+    if not _USUARIO_VALIDO.fullmatch(usuario) or not 2 <= len(nombre) <= 100:
+        raise ValueError("Revisa el nombre y el usuario solicitado.")
+    if len(motivo) > 500:
+        raise ValueError("El motivo no puede superar 500 caracteres.")
+    try:
+        with conectar(ruta) as conexion:
+            if conexion.execute("SELECT 1 FROM usuarios WHERE usuario=?", (usuario,)).fetchone():
+                raise ValueError("No se pudo registrar la solicitud. Contacta a un administrador.")
+            conexion.execute(
+                "INSERT INTO solicitudes_cuenta(usuario_solicitado,nombre,motivo) VALUES (?,?,?)",
+                (usuario, nombre, motivo),
+            )
+    except Exception as error:
+        if "UNIQUE constraint failed" in str(error):
+            raise ValueError("No se pudo registrar la solicitud. Contacta a un administrador.") from error
+        raise
+
+
+def listar_solicitudes_cuenta(ruta: Path = RUTA_BASE_DATOS) -> list[dict]:
+    with conectar(ruta) as conexion:
+        filas = conexion.execute(
+            "SELECT id,usuario_solicitado,nombre,motivo,estado,creada_en "
+            "FROM solicitudes_cuenta WHERE estado='pendiente' ORDER BY creada_en ASC"
+        ).fetchall()
+    return [dict(fila) for fila in filas]
 
 
 def listar_usuarios(ruta: Path = RUTA_BASE_DATOS) -> list[Usuario]:

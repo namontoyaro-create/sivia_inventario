@@ -10,10 +10,14 @@
     <h2>Iniciar sesi&oacute;n</h2>
     <p>Accede con tu cuenta autorizada.</p>
     {% if error %}<p class="error">{{ error }}</p>{% endif %}
+    {% if configuracion_pendiente %}<p class="acceso-nota">SIVIA aún no tiene una cuenta activa. La configuración inicial requiere un código autorizado del entorno.</p>{% endif %}
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <label>Usuario<input name="usuario" value="{{ usuario_ingresado|default('') }}" autocomplete="username" required></label>
     <label>Contrase&ntilde;a<input name="contrasena" type="password" autocomplete="current-password" required></label>
     <button class="boton primario" type="submit">Ingresar a SIVIA</button>
     <p class="acceso-enlace"><a href="/recuperar-acceso">&iquest;Olvidaste tu contrase&ntilde;a?</a></p>
+    <p class="acceso-enlace"><a href="/solicitar-cuenta">Solicitar una cuenta</a></p>
+    {% if configuracion_pendiente %}<p class="acceso-enlace"><a href="/configurar-acceso">Configuración inicial autorizada</a></p>{% endif %}
   </form>
 </section>
 {% endblock %}

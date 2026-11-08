@@ -1,12 +1,15 @@
 """Aplicación web local de SIVIA."""
 
 from contextlib import asynccontextmanager
+from datetime import datetime
+import hmac
 import logging
 import os
 from pathlib import Path
 import secrets
 import shutil
 import tempfile
+import time
 from uuid import uuid4
 
 from fastapi import FastAPI, File, Form, Request, UploadFile
@@ -35,8 +38,9 @@ from sivia_inventario.asistente_voz_logica import interpretar_instruccion
 from sivia_inventario.voz import ErrorAudio, FORMATOS_AUDIO, transcribir_audio, validar_audio
 from sivia_inventario.imagenes import validar_contenido_imagen
 from sivia_inventario.autenticacion import (
-    NOMBRES_ROL, ROLES, autenticar, cambiar_contrasena, crear_usuario,
-    existen_usuarios, listar_usuarios, obtener_usuario, restablecer_contrasena_con_codigo,
+    NOMBRES_ROL, ROLES, autenticar, cambiar_contrasena, crear_primer_administrador,
+    crear_usuario, existen_usuarios, listar_solicitudes_cuenta, listar_usuarios,
+    obtener_usuario, restablecer_contrasena_con_codigo, solicitar_cuenta,
 )
 
 REGISTRO = logging.getLogger(__name__)
@@ -49,6 +53,9 @@ CARPETA_IMAGENES = RAIZ / "datos" / "imagenes"
 EXTENSIONES_IMAGEN = {".jpg", ".jpeg", ".png", ".webp"}
 MAXIMO_IMAGEN_BYTES = 5 * 1024 * 1024
 MAXIMO_RECTANGULOS_POR_PROPUESTA = 100
+MAXIMO_INTENTOS_LOGIN = 5
+VENTANA_INTENTOS_LOGIN_SEGUNDOS = 15 * 60
+INTENTOS_LOGIN: dict[str, list[float]] = {}
 
 
 def preparar_directorios_web(raiz: Path | None = None) -> tuple[Path, ...]:
@@ -101,17 +108,22 @@ def contexto_global(request: Request) -> dict:
     if not usuario and os.getenv("SIVIA_SIN_AUTENTICACION") == "1":
         usuario = {"usuario": "pruebas", "nombre": "Modo de pruebas", "rol": "administrador", "rol_nombre": "Administrador"}
     rol = usuario.get("rol") if usuario else None
+    token_csrf = request.session.get("csrf_token")
+    if not isinstance(token_csrf, str) or len(token_csrf) < 32:
+        token_csrf = secrets.token_urlsafe(32)
+        request.session["csrf_token"] = token_csrf
     return {
         "usuario_actual": usuario,
         "puede_administrar": rol == "administrador",
         "puede_operar": rol in {"administrador", "operador"},
         "es_auditor": rol == "auditor",
+        "csrf_token": token_csrf,
     }
 
 
 plantillas = Jinja2Templates(directory=PLANTILLAS, context_processors=[contexto_global])
 
-RUTAS_PUBLICAS = {"/login", "/configurar-acceso", "/cerrar-sesion", "/recuperar-contrasena", "/recuperar-acceso"}
+RUTAS_PUBLICAS = {"/login", "/configurar-acceso", "/cerrar-sesion", "/recuperar-contrasena", "/recuperar-acceso", "/solicitar-cuenta"}
 # Hojas de estilo y JavaScript son públicos para mostrar el inicio; las fotos,
 # evidencias y anotaciones requieren una sesión válida.
 PREFIJOS_ESTATICOS = ("/static/",)
@@ -129,7 +141,7 @@ async def proteger_aplicacion(request: Request, call_next):
     if os.getenv("SIVIA_SIN_AUTENTICACION") == "1" or ruta in RUTAS_PUBLICAS or ruta.startswith(PREFIJOS_ESTATICOS):
         return await call_next(request)
     if not existen_usuarios():
-        return RedirectResponse("/configurar-acceso", status_code=303)
+        return RedirectResponse("/login", status_code=303)
     datos = request.session.get("usuario")
     usuario = obtener_usuario(str(datos.get("usuario", ""))) if isinstance(datos, dict) else None
     if not usuario or not usuario.activo:
@@ -169,6 +181,42 @@ app.add_middleware(
     same_site="lax",
     https_only=os.getenv("SIVIA_HTTPS_ONLY", "0") == "1",
 )
+
+
+def csrf_valido(request: Request, recibido: str) -> bool:
+    """Verifica el token de un formulario sin revelar el valor de sesión."""
+    esperado = request.session.get("csrf_token")
+    return (
+        isinstance(esperado, str)
+        and isinstance(recibido, str)
+        and hmac.compare_digest(esperado, recibido)
+    )
+
+
+def respuesta_csrf_invalido(request: Request, plantilla: str, contexto: dict | None = None):
+    datos = {"pagina": "", "error": "La sesión del formulario venció. Actualiza la página e inténtalo nuevamente."}
+    if contexto:
+        datos.update(contexto)
+    return plantillas.TemplateResponse(request, plantilla, datos, status_code=403)
+
+
+def clave_intento_login(request: Request, usuario: str) -> str:
+    host = request.client.host if request.client else "desconocido"
+    return f"{host}:{usuario.strip().lower()[:80]}"
+
+
+def limite_intentos_superado(clave: str) -> bool:
+    ahora = time.monotonic()
+    intentos = [instante for instante in INTENTOS_LOGIN.get(clave, []) if ahora - instante < VENTANA_INTENTOS_LOGIN_SEGUNDOS]
+    if intentos:
+        INTENTOS_LOGIN[clave] = intentos
+    else:
+        INTENTOS_LOGIN.pop(clave, None)
+    return len(intentos) >= MAXIMO_INTENTOS_LOGIN
+
+
+def registrar_intento_fallido(clave: str) -> None:
+    INTENTOS_LOGIN.setdefault(clave, []).append(time.monotonic())
 
 
 def url_imagen(ruta: str | None) -> str | None:
@@ -279,35 +327,68 @@ def eliminar_audio_temporal(ruta: Path) -> None:
 def configurar_acceso(request: Request):
     if existen_usuarios():
         return RedirectResponse("/login", status_code=303)
-    return plantillas.TemplateResponse(request, "configurar_acceso.html", {"pagina": "", "valores": {}})
+    return plantillas.TemplateResponse(
+        request,
+        "configurar_acceso.html",
+        {"pagina": "", "valores": {}, "bootstrap_configurado": bool(os.getenv("SIVIA_BOOTSTRAP_TOKEN"))},
+    )
 
 
 @app.post("/configurar-acceso", response_class=HTMLResponse)
-def guardar_configuracion_acceso(request: Request, usuario: str = Form(""), nombre: str = Form(""), contrasena: str = Form(""), confirmar_contrasena: str = Form("")):
+def guardar_configuracion_acceso(
+    request: Request,
+    usuario: str = Form(""),
+    nombre: str = Form(""),
+    contrasena: str = Form(""),
+    confirmar_contrasena: str = Form(""),
+    codigo_configuracion: str = Form(""),
+    csrf_token: str = Form(""),
+):
     if existen_usuarios():
         return RedirectResponse("/login", status_code=303)
+    valores = {"usuario": usuario, "nombre": nombre}
+    if not csrf_valido(request, csrf_token):
+        return respuesta_csrf_invalido(request, "configurar_acceso.html", {"valores": valores})
+    token_bootstrap = os.getenv("SIVIA_BOOTSTRAP_TOKEN", "")
+    if not token_bootstrap or not hmac.compare_digest(token_bootstrap, codigo_configuracion):
+        return plantillas.TemplateResponse(
+            request, "configurar_acceso.html",
+            {"pagina": "", "error": "El código de configuración no es válido.", "valores": valores, "bootstrap_configurado": bool(token_bootstrap)},
+            status_code=403,
+        )
     if contrasena != confirmar_contrasena:
-        return plantillas.TemplateResponse(request, "configurar_acceso.html", {"pagina": "", "error": "Las contraseñas no coinciden.", "valores": {"usuario": usuario, "nombre": nombre}}, status_code=400)
+        return plantillas.TemplateResponse(request, "configurar_acceso.html", {"pagina": "", "error": "Las contraseñas no coinciden.", "valores": valores, "bootstrap_configurado": True}, status_code=400)
     try:
-        primer_usuario = crear_usuario(usuario, nombre, "administrador", contrasena)
+        primer_usuario = crear_primer_administrador(usuario, nombre, contrasena)
     except ValueError as error:
-        return plantillas.TemplateResponse(request, "configurar_acceso.html", {"pagina": "", "error": str(error), "valores": {"usuario": usuario, "nombre": nombre}}, status_code=400)
+        return plantillas.TemplateResponse(request, "configurar_acceso.html", {"pagina": "", "error": str(error), "valores": valores, "bootstrap_configurado": True}, status_code=400)
     request.session["usuario"] = primer_usuario.contexto()
     return RedirectResponse("/", status_code=303)
 
 
 @app.get("/login", response_class=HTMLResponse)
 def login(request: Request):
-    if not existen_usuarios():
-        return RedirectResponse("/configurar-acceso", status_code=303)
-    return plantillas.TemplateResponse(request, "login.html", {"pagina": ""})
+    return plantillas.TemplateResponse(request, "login.html", {"pagina": "", "configuracion_pendiente": not existen_usuarios()})
 
 
 @app.post("/login", response_class=HTMLResponse)
-def iniciar_sesion(request: Request, usuario: str = Form(""), contrasena: str = Form("")):
+def iniciar_sesion(request: Request, usuario: str = Form(""), contrasena: str = Form(""), csrf_token: str = Form("")):
+    contexto = {"pagina": "", "usuario_ingresado": usuario, "configuracion_pendiente": not existen_usuarios()}
+    if not csrf_valido(request, csrf_token):
+        return respuesta_csrf_invalido(request, "login.html", contexto)
+    if not existen_usuarios():
+        contexto["error"] = "Aún no hay una cuenta activa. Una persona autorizada debe completar la configuración inicial."
+        return plantillas.TemplateResponse(request, "login.html", contexto, status_code=403)
+    clave = clave_intento_login(request, usuario)
+    if limite_intentos_superado(clave):
+        contexto["error"] = "Demasiados intentos. Espera unos minutos antes de volver a intentarlo."
+        return plantillas.TemplateResponse(request, "login.html", contexto, status_code=429)
     cuenta = autenticar(usuario, contrasena)
     if not cuenta:
-        return plantillas.TemplateResponse(request, "login.html", {"pagina": "", "error": "Usuario o contraseña incorrectos.", "usuario_ingresado": usuario}, status_code=401)
+        registrar_intento_fallido(clave)
+        contexto["error"] = "Usuario o contraseña incorrectos."
+        return plantillas.TemplateResponse(request, "login.html", contexto, status_code=401)
+    INTENTOS_LOGIN.pop(clave, None)
     request.session.clear()
     request.session["usuario"] = cuenta.contexto()
     return RedirectResponse("/", status_code=303)
@@ -315,8 +396,6 @@ def iniciar_sesion(request: Request, usuario: str = Form(""), contrasena: str = 
 
 @app.get("/recuperar-acceso", response_class=HTMLResponse)
 def recuperar_acceso(request: Request):
-    if not existen_usuarios():
-        return RedirectResponse("/configurar-acceso", status_code=303)
     return plantillas.TemplateResponse(request, "recuperar_acceso.html", {"pagina": ""})
 
 
@@ -333,7 +412,10 @@ def guardar_contrasena_recuperada(
     codigo_recuperacion: str = Form(""),
     nueva_contrasena: str = Form(""),
     confirmar_contrasena: str = Form(""),
+    csrf_token: str = Form(""),
 ):
+    if not csrf_valido(request, csrf_token):
+        return respuesta_csrf_invalido(request, "recuperar_acceso.html")
     if nueva_contrasena != confirmar_contrasena:
         return plantillas.TemplateResponse(
             request, "recuperar_acceso.html",
@@ -357,23 +439,63 @@ def guardar_contrasena_recuperada(
 
 @app.post("/cerrar-sesion")
 def cerrar_sesion(request: Request):
+    # Cerrar la propia sesión es una operación idempotente y no cambia datos.
+    # Mantenerla sin token evita que una sesión expirada bloquee el cierre.
     request.session.clear()
     return RedirectResponse("/login", status_code=303)
 
 
+@app.get("/solicitar-cuenta", response_class=HTMLResponse)
+def mostrar_solicitud_cuenta(request: Request):
+    return plantillas.TemplateResponse(request, "solicitar_cuenta.html", {"pagina": "", "valores": {}})
+
+
+@app.post("/solicitar-cuenta", response_class=HTMLResponse)
+def guardar_solicitud_cuenta(
+    request: Request,
+    usuario: str = Form(""),
+    nombre: str = Form(""),
+    motivo: str = Form(""),
+    csrf_token: str = Form(""),
+):
+    valores = {"usuario": usuario, "nombre": nombre, "motivo": motivo}
+    if not csrf_valido(request, csrf_token):
+        return respuesta_csrf_invalido(request, "solicitar_cuenta.html", {"valores": valores})
+    try:
+        solicitar_cuenta(usuario, nombre, motivo)
+    except ValueError as error:
+        return plantillas.TemplateResponse(request, "solicitar_cuenta.html", {"pagina": "", "error": str(error), "valores": valores}, status_code=400)
+    return plantillas.TemplateResponse(request, "solicitar_cuenta.html", {"pagina": "", "mensaje": "Solicitud registrada. Un administrador debe autorizar y crear tu cuenta.", "valores": {}})
+
+
 @app.get("/usuarios", response_class=HTMLResponse)
 def usuarios(request: Request):
-    return plantillas.TemplateResponse(request, "usuarios.html", {"pagina": "usuarios", "usuarios": [item.contexto() | {"activo": item.activo} for item in listar_usuarios()], "roles": ROLES, "nombres_rol": NOMBRES_ROL, "valores": {}})
+    return plantillas.TemplateResponse(request, "usuarios.html", contexto_usuarios())
+
+
+def contexto_usuarios(**extra) -> dict:
+    return {
+        "pagina": "usuarios",
+        "usuarios": [item.contexto() | {"activo": item.activo} for item in listar_usuarios()],
+        "solicitudes_pendientes": listar_solicitudes_cuenta(),
+        "roles": ROLES,
+        "nombres_rol": NOMBRES_ROL,
+        "valores": {},
+        **extra,
+    }
 
 
 @app.post("/usuarios", response_class=HTMLResponse)
-def guardar_usuario(request: Request, usuario: str = Form(""), nombre: str = Form(""), rol: str = Form(""), contrasena: str = Form(""), confirmar_contrasena: str = Form("")):
+def guardar_usuario(request: Request, usuario: str = Form(""), nombre: str = Form(""), rol: str = Form(""), contrasena: str = Form(""), confirmar_contrasena: str = Form(""), csrf_token: str = Form("")):
+    valores = {"usuario": usuario, "nombre": nombre, "rol": rol}
+    if not csrf_valido(request, csrf_token):
+        return respuesta_csrf_invalido(request, "usuarios.html", contexto_usuarios(valores=valores))
     if contrasena != confirmar_contrasena:
-        return plantillas.TemplateResponse(request, "usuarios.html", {"pagina": "usuarios", "usuarios": [item.contexto() | {"activo": item.activo} for item in listar_usuarios()], "roles": ROLES, "nombres_rol": NOMBRES_ROL, "error": "Las contraseñas no coinciden.", "valores": {"usuario": usuario, "nombre": nombre, "rol": rol}}, status_code=400)
+        return plantillas.TemplateResponse(request, "usuarios.html", contexto_usuarios(error="Las contraseñas no coinciden.", valores=valores), status_code=400)
     try:
         crear_usuario(usuario, nombre, rol, contrasena)
     except ValueError as error:
-        return plantillas.TemplateResponse(request, "usuarios.html", {"pagina": "usuarios", "usuarios": [item.contexto() | {"activo": item.activo} for item in listar_usuarios()], "roles": ROLES, "nombres_rol": NOMBRES_ROL, "error": str(error), "valores": {"usuario": usuario, "nombre": nombre, "rol": rol}}, status_code=400)
+        return plantillas.TemplateResponse(request, "usuarios.html", contexto_usuarios(error=str(error), valores=valores), status_code=400)
     return RedirectResponse("/usuarios?mensaje=creado", status_code=303)
 
 
@@ -383,7 +505,9 @@ def mi_cuenta(request: Request):
 
 
 @app.post("/mi-cuenta", response_class=HTMLResponse)
-def actualizar_mi_contrasena(request: Request, contrasena_actual: str = Form(""), nueva_contrasena: str = Form(""), confirmar_contrasena: str = Form("")):
+def actualizar_mi_contrasena(request: Request, contrasena_actual: str = Form(""), nueva_contrasena: str = Form(""), confirmar_contrasena: str = Form(""), csrf_token: str = Form("")):
+    if not csrf_valido(request, csrf_token):
+        return respuesta_csrf_invalido(request, "mi_cuenta.html")
     if nueva_contrasena != confirmar_contrasena:
         return plantillas.TemplateResponse(request, "mi_cuenta.html", {"pagina": "", "error": "Las contraseñas nuevas no coinciden."}, status_code=400)
     datos = request.session.get("usuario") or {}

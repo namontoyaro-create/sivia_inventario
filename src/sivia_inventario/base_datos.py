@@ -6,13 +6,32 @@ stock registrado por sí sola.
 
 from contextlib import contextmanager
 from datetime import datetime, timezone
+import os
 from pathlib import Path
 import sqlite3
 
 from sivia_inventario.categorias import CATALOGO
 
 RAIZ = Path(__file__).resolve().parents[2]
-RUTA_BASE_DATOS = RAIZ / "datos" / "sivia.db"
+
+
+def ruta_base_datos_configurada() -> Path:
+    """Obtiene una ruta SQLite local o una ruta persistente configurada.
+
+    ``SIVIA_DB_PATH`` solo se configura en el entorno del servidor; no se
+    guarda en Git ni permite rutas relativas ambiguas. Sin la variable se
+    conserva exactamente la ruta local histórica del proyecto.
+    """
+    configurada = os.getenv("SIVIA_DB_PATH", "").strip()
+    if not configurada:
+        return RAIZ / "datos" / "sivia.db"
+    ruta = Path(configurada).expanduser()
+    if not ruta.is_absolute() or ruta.suffix.lower() != ".db":
+        raise RuntimeError("SIVIA_DB_PATH debe ser una ruta absoluta a un archivo .db.")
+    return ruta.resolve()
+
+
+RUTA_BASE_DATOS = ruta_base_datos_configurada()
 CARPETA_RESPALDOS = RAIZ / "datos" / "respaldos"
 
 STOCK_SIMULADO_INICIAL = {
@@ -145,6 +164,21 @@ CREATE TABLE IF NOT EXISTS recuperaciones_contrasena (
 
 CREATE INDEX IF NOT EXISTS idx_recuperaciones_usuario_vigente
 ON recuperaciones_contrasena(usuario_id, usada_en, vence_en);
+
+CREATE TABLE IF NOT EXISTS solicitudes_cuenta (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    usuario_solicitado TEXT NOT NULL UNIQUE COLLATE NOCASE,
+    nombre TEXT NOT NULL,
+    motivo TEXT NOT NULL DEFAULT '',
+    estado TEXT NOT NULL DEFAULT 'pendiente'
+        CHECK (estado IN ('pendiente', 'revisada', 'rechazada')),
+    creada_en TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    revisada_en TEXT,
+    revisada_por INTEGER REFERENCES usuarios(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_solicitudes_cuenta_estado
+ON solicitudes_cuenta(estado, creada_en);
 """
 
 
@@ -279,6 +313,28 @@ def _aplicar_migraciones(conexion: sqlite3.Connection) -> None:
     )
     _registrar_migracion(conexion, 3, "recuperacion_local_contrasena")
 
+    # Versión 4: solicitudes públicas sin crear cuentas ni contraseñas.
+    conexion.execute(
+        """
+        CREATE TABLE IF NOT EXISTS solicitudes_cuenta (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            usuario_solicitado TEXT NOT NULL UNIQUE COLLATE NOCASE,
+            nombre TEXT NOT NULL,
+            motivo TEXT NOT NULL DEFAULT '',
+            estado TEXT NOT NULL DEFAULT 'pendiente'
+                CHECK (estado IN ('pendiente', 'revisada', 'rechazada')),
+            creada_en TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            revisada_en TEXT,
+            revisada_por INTEGER REFERENCES usuarios(id)
+        )
+        """
+    )
+    conexion.execute(
+        "CREATE INDEX IF NOT EXISTS idx_solicitudes_cuenta_estado "
+        "ON solicitudes_cuenta(estado, creada_en)"
+    )
+    _registrar_migracion(conexion, 4, "solicitudes_cuenta_pendientes")
+
 
 def inicializar_base_datos(ruta: Path = RUTA_BASE_DATOS) -> Path | None:
     """Inicializa SIVIA y respalda una base existente antes de migrarla.
@@ -292,6 +348,7 @@ def inicializar_base_datos(ruta: Path = RUTA_BASE_DATOS) -> Path | None:
         "versiones_esquema" not in tablas
         or not campos_v2.issubset(columnas)
         or "recuperaciones_contrasena" not in tablas
+        or "solicitudes_cuenta" not in tablas
     )
     respaldo = crear_respaldo_antes_migracion(ruta) if requiere_migracion else None
 

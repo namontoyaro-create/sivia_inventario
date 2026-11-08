@@ -236,6 +236,25 @@ def detector_activo_contexto() -> dict:
     return {"id": identificador, **datos}
 
 
+def contexto_detector_no_disponible() -> dict:
+    """Contexto seguro cuando el despliegue no incluye pesos YOLO."""
+    return {
+        "pagina": "verificar",
+        "modelo_activo": {
+            "id": "no_disponible",
+            "nombre": "Detector no disponible",
+            "experimental": True,
+            "disponible": False,
+        },
+        "detector_disponible": False,
+        "error": (
+            "El detector YOLO no está disponible en este servidor. La página "
+            "puede consultarse, pero no se analizarán imágenes hasta instalar "
+            "los pesos del modelo y sus dependencias."
+        ),
+    }
+
+
 def guardar_resultado_anotado(ruta_resultado: str | Path) -> tuple[str, str]:
     """Conserva una copia de las cajas YOLO junto a la evidencia original."""
     nombre = f"resultado_{uuid4().hex}.jpg"
@@ -498,8 +517,10 @@ def borrar_producto(codigo: str):
 def verificar(request: Request):
     try:
         activo = detector_activo_contexto()
-    except FileNotFoundError as error:
-        return plantillas.TemplateResponse(request, "verificar.html", {"pagina": "verificar", "error": str(error)}, status_code=503)
+    except FileNotFoundError:
+        # Los pesos .pt no se versionan en Git. Render puede iniciar sin ellos;
+        # la interfaz debe informar el estado y no responder con un error 500.
+        return plantillas.TemplateResponse(request, "verificar.html", contexto_detector_no_disponible())
     return plantillas.TemplateResponse(request, "verificar.html", {
         "pagina": "verificar", "modelo_activo": activo,
         "productos_catalogo": [producto_contexto(producto) for producto in listar_productos()],
@@ -669,6 +690,20 @@ async def decidir_anotacion(archivo: str = Form(), decision: str = Form(), motiv
 
 @app.post("/verificar/analizar", response_class=HTMLResponse)
 async def analizar_verificacion(request: Request, evidencia: UploadFile | None = File(None), detector: str | None = Form(None), procedencia: str = Form("prueba_fisica"), comparar_v1_v2: str | None = Form(None), modo_tecnico: str | None = Form(None)):
+    # Se comprueba el modelo antes de persistir la evidencia. Así, Render no
+    # guarda cargas ni responde con una página de error si los pesos no fueron
+    # instalados en el servicio.
+    if modo_tecnico != "si":
+        try:
+            detector = detector_activo_contexto()["id"]
+        except FileNotFoundError:
+            return plantillas.TemplateResponse(
+                request,
+                "verificar.html",
+                contexto_detector_no_disponible(),
+                status_code=503,
+            )
+        comparar_v1_v2 = None
     if procedencia not in {"internet", "prueba_fisica", "distribuidora_atencio"}:
         return HTMLResponse("La procedencia seleccionada no es válida.", 400)
     try:

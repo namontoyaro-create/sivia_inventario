@@ -120,6 +120,23 @@ def test_verificar_usa_modelo_activo_sin_selector_manual():
     assert "Analizando imagen con IA" in respuesta.text
 
 
+def test_verificar_carga_con_aviso_si_render_no_tiene_pesos_yolo(monkeypatch):
+    def sin_detector():
+        raise FileNotFoundError("No hay un modelo YOLO local disponible para SIVIA.")
+
+    monkeypatch.setattr("sivia_inventario.web.detector_activo_contexto", sin_detector)
+
+    with TestClient(app) as cliente:
+        pagina = cliente.get("/verificar")
+        analisis = cliente.post("/verificar/analizar")
+
+    assert pagina.status_code == 200
+    assert "Detector no disponible" in pagina.text
+    assert "no se analizar" in pagina.text
+    assert analisis.status_code == 503
+    assert "Detector no disponible" in analisis.text
+
+
 def test_pruebas_tecnicas_conservan_selector_y_comparacion():
     with TestClient(app) as cliente:
         respuesta = cliente.get("/verificar/tecnico")

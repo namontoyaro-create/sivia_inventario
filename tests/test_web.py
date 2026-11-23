@@ -65,14 +65,19 @@ def _configurar_verificacion_temporal(monkeypatch, tmp_path):
     monkeypatch.setattr(web, "guardar_verificacion", lambda *args, **kwargs: repositorio.guardar_verificacion(*args, ruta=base, **kwargs))
     monkeypatch.setattr(web, "obtener_producto", lambda codigo: repositorio.obtener_producto(codigo, base))
     monkeypatch.setattr(web, "listar_productos_por_clase", lambda clase: repositorio.listar_productos_por_clase(clase, base))
-    return base, propuestas, registro, "datos/evidencias/captura.jpg"
+    web.REVISIONES_PENDIENTES.clear()
+    token = web.crear_revision_pendiente(
+        "datos/evidencias/captura.jpg",
+        "",
+        "prueba",
+        "prueba_fisica",
+    )
+    return base, propuestas, registro, token
 
 
-def _formulario_verificacion(evidencia_ruta, *, manual=False):
+def _formulario_verificacion(revision_token, *, manual=False):
     datos = {
-        "evidencia_ruta": evidencia_ruta,
-        "detector": "prueba",
-        "procedencia": "prueba_fisica",
+        "revision_token": revision_token,
         "alcance": "captura de prueba",
         "deteccion_id": "1",
         "clase_1": "candado",
@@ -86,12 +91,14 @@ def _formulario_verificacion(evidencia_ruta, *, manual=False):
 
 def test_verificacion_corregida_crea_propuesta_sin_cambiar_stock_ni_duplicar(tmp_path, monkeypatch):
     import sivia_inventario.repositorio_inventario as repositorio
+    import sivia_inventario.web as web
 
-    base, propuestas, registro, evidencia_ruta = _configurar_verificacion_temporal(monkeypatch, tmp_path)
+    base, propuestas, registro, revision_token = _configurar_verificacion_temporal(monkeypatch, tmp_path)
     stock_antes = repositorio.obtener_producto("P003", base).stock_registrado
     with TestClient(app) as cliente:
-        primera = cliente.post("/verificar/guardar", data=_formulario_verificacion(evidencia_ruta, manual=True), follow_redirects=False)
-        segunda = cliente.post("/verificar/guardar", data=_formulario_verificacion(evidencia_ruta, manual=True), follow_redirects=False)
+        primera = cliente.post("/verificar/guardar", data=_formulario_verificacion(revision_token, manual=True), follow_redirects=False)
+        segundo_token = web.crear_revision_pendiente("datos/evidencias/captura.jpg", "", "prueba", "prueba_fisica")
+        segunda = cliente.post("/verificar/guardar", data=_formulario_verificacion(segundo_token, manual=True), follow_redirects=False)
 
     pendientes = json.loads(propuestas.read_text(encoding="utf-8"))["imagenes"]
     procedencias = json.loads(registro.read_text(encoding="utf-8"))["imagenes"]
@@ -105,9 +112,9 @@ def test_verificacion_corregida_crea_propuesta_sin_cambiar_stock_ni_duplicar(tmp
 
 
 def test_verificacion_sin_correccion_no_crea_propuesta(tmp_path, monkeypatch):
-    _base, propuestas, registro, evidencia_ruta = _configurar_verificacion_temporal(monkeypatch, tmp_path)
+    _base, propuestas, registro, revision_token = _configurar_verificacion_temporal(monkeypatch, tmp_path)
     with TestClient(app) as cliente:
-        respuesta = cliente.post("/verificar/guardar", data=_formulario_verificacion(evidencia_ruta), follow_redirects=False)
+        respuesta = cliente.post("/verificar/guardar", data=_formulario_verificacion(revision_token), follow_redirects=False)
 
     assert respuesta.status_code == 303
     assert json.loads(propuestas.read_text(encoding="utf-8"))["imagenes"] == []
@@ -118,13 +125,56 @@ def test_error_al_enviar_correccion_no_impide_guardar_verificacion(tmp_path, mon
     import sivia_inventario.web as web
     import sivia_inventario.repositorio_inventario as repositorio
 
-    base, _propuestas, _registro, evidencia_ruta = _configurar_verificacion_temporal(monkeypatch, tmp_path)
+    base, _propuestas, _registro, revision_token = _configurar_verificacion_temporal(monkeypatch, tmp_path)
     monkeypatch.setattr(web, "registrar_correccion_verificacion", lambda *_args: (_ for _ in ()).throw(OSError("fallo simulado")))
     with TestClient(app) as cliente:
-        respuesta = cliente.post("/verificar/guardar", data=_formulario_verificacion(evidencia_ruta, manual=True), follow_redirects=False)
+        respuesta = cliente.post("/verificar/guardar", data=_formulario_verificacion(revision_token, manual=True), follow_redirects=False)
 
     assert respuesta.status_code == 303
     assert len(repositorio.listar_sesiones_verificacion(base)) == 1
+
+
+@pytest.mark.parametrize("ruta_manipulada", ["../fuera.jpg", "C:/Windows/system32/archivo.jpg", "datos/productos/otro.jpg"])
+def test_guardar_revision_ignora_rutas_manipuladas_del_formulario(tmp_path, monkeypatch, ruta_manipulada):
+    import sivia_inventario.repositorio_inventario as repositorio
+
+    base, _propuestas, _registro, revision_token = _configurar_verificacion_temporal(monkeypatch, tmp_path)
+    stock_antes = repositorio.obtener_producto("P003", base).stock_registrado
+    formulario = _formulario_verificacion(revision_token)
+    formulario |= {
+        "evidencia_ruta": ruta_manipulada,
+        "resultado_ruta": ruta_manipulada,
+        "detector": "manipulado",
+        "procedencia": "internet",
+    }
+    with TestClient(app) as cliente:
+        respuesta = cliente.post("/verificar/guardar", data=formulario, follow_redirects=False)
+
+    assert respuesta.status_code == 303
+    assert ruta_manipulada not in respuesta.text
+    assert repositorio.obtener_producto("P003", base).stock_registrado == stock_antes
+
+
+def test_guardar_revision_rechaza_token_manipulado_sin_exponer_rutas(tmp_path, monkeypatch):
+    _base, _propuestas, _registro, _revision_token = _configurar_verificacion_temporal(monkeypatch, tmp_path)
+    with TestClient(app) as cliente:
+        respuesta = cliente.post(
+            "/verificar/guardar",
+            data={"revision_token": "../datos/evidencias/captura.jpg"},
+            follow_redirects=False,
+        )
+
+    assert respuesta.status_code == 400
+    assert "datos/evidencias" not in respuesta.text
+    assert "La revisión ya no está disponible" in respuesta.text
+
+
+def test_revision_verificacion_no_reenvia_rutas_internas():
+    plantilla = (PLANTILLAS / "revision_verificacion.html").read_text(encoding="utf-8")
+
+    assert 'name="revision_token"' in plantilla
+    assert 'name="evidencia_ruta"' not in plantilla
+    assert 'name="resultado_ruta"' not in plantilla
 
 
 def test_produccion_exige_secreto_de_sesion(monkeypatch):

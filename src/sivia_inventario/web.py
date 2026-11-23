@@ -62,6 +62,10 @@ INTENTOS_LOGIN: dict[str, list[float]] = {}
 RUTA_SECRETO_SESION_LOCAL = RAIZ / "datos" / ".sivia_sesion_secreta"
 DURACION_SESION_LOCAL_SEGUNDOS = 8 * 60 * 60
 DURACION_CSRF_LOGIN_SEGUNDOS = 15 * 60
+DURACION_REVISION_PENDIENTE_SEGUNDOS = 15 * 60
+# Estado efímero de una evidencia recién analizada. Las rutas internas nunca
+# salen de este diccionario: el navegador solo recibe un identificador firmado.
+REVISIONES_PENDIENTES: dict[str, dict[str, object]] = {}
 
 
 def preparar_directorios_web(raiz: Path | None = None) -> tuple[Path, ...]:
@@ -236,6 +240,77 @@ def configuracion_cookies_sesion() -> dict[str, int | bool | str]:
 
 SECRETO_SESION = secreto_sesion()
 SERIALIZADOR_CSRF_LOGIN = URLSafeTimedSerializer(SECRETO_SESION, salt="sivia-login-csrf-v1")
+SERIALIZADOR_REVISION_PENDIENTE = URLSafeTimedSerializer(
+    SECRETO_SESION,
+    salt="sivia-revision-pendiente-v1",
+)
+
+
+def _identidad_revision(request: Request) -> str | None:
+    """Obtiene la identidad de la sesión sin exponer datos en el formulario."""
+    usuario = request.session.get("usuario")
+    if not isinstance(usuario, dict):
+        return None
+    identificador = usuario.get("usuario")
+    return str(identificador) if identificador else None
+
+
+def _limpiar_revisiones_pendientes() -> None:
+    limite = time.monotonic() - DURACION_REVISION_PENDIENTE_SEGUNDOS
+    expiradas = [
+        identificador
+        for identificador, revision in REVISIONES_PENDIENTES.items()
+        if not isinstance(revision.get("creada_en"), float) or revision["creada_en"] < limite
+    ]
+    for identificador in expiradas:
+        REVISIONES_PENDIENTES.pop(identificador, None)
+
+
+def crear_revision_pendiente(
+    evidencia_ruta: str,
+    resultado_ruta: str,
+    detector: str,
+    procedencia: str,
+    propietario: str | None = None,
+) -> str:
+    """Guarda rutas internas temporalmente y devuelve un token sin rutas."""
+    _limpiar_revisiones_pendientes()
+    identificador = uuid4().hex
+    REVISIONES_PENDIENTES[identificador] = {
+        "evidencia_ruta": evidencia_ruta,
+        "resultado_ruta": resultado_ruta,
+        "detector": detector,
+        "procedencia": procedencia,
+        "propietario": propietario,
+        "creada_en": time.monotonic(),
+    }
+    return SERIALIZADOR_REVISION_PENDIENTE.dumps(
+        {"proposito": "revision_verificacion", "id": identificador}
+    )
+
+
+def obtener_revision_pendiente(request: Request, token: str) -> tuple[str, dict[str, object]] | None:
+    """Verifica el token y devuelve solo la revisión pendiente de su propietario."""
+    try:
+        contenido = SERIALIZADOR_REVISION_PENDIENTE.loads(
+            token,
+            max_age=DURACION_REVISION_PENDIENTE_SEGUNDOS,
+        )
+    except (BadSignature, SignatureExpired):
+        return None
+    if not isinstance(contenido, dict) or contenido.get("proposito") != "revision_verificacion":
+        return None
+    identificador = contenido.get("id")
+    if not isinstance(identificador, str):
+        return None
+    _limpiar_revisiones_pendientes()
+    revision = REVISIONES_PENDIENTES.get(identificador)
+    if revision is None:
+        return None
+    propietario = revision.get("propietario")
+    if propietario is not None and not hmac.compare_digest(str(propietario), _identidad_revision(request) or ""):
+        return None
+    return identificador, revision
 
 app.add_middleware(
     SessionMiddleware,
@@ -1064,13 +1139,34 @@ async def analizar_verificacion(request: Request, evidencia: UploadFile | None =
             "dudosas": dudas.get(clase, 0),
         })
     estado_resultado = "detectado" if detectados else ("fuera_catalogo" if desconocidas else ("baja_confianza" if bajas else "sin_deteccion"))
-    return plantillas.TemplateResponse(request, "revision_verificacion.html", {"pagina": "verificar", "detectados": detectados, "desconocidas": desconocidas, "detecciones_bajas": bajas, "estado_resultado": estado_resultado, "evidencia_ruta": evidencia_ruta, "evidencia_url": evidencia_url, "resultado_ruta": resultado_ruta, "resultado_url": resultado_url, "detector": detector, "detector_nombre": detectores[detector]["nombre"], "procedencia": procedencia, "comparacion_modelos": comparacion_modelos, "resumen_yolo": resumen_yolo, "total_yolo": sum(item["cantidad"] for item in resumen_yolo), "productos_catalogo": [producto_contexto(producto) for producto in productos_activos], "aviso": "Predicciones reales del detector seleccionado. Las detecciones de baja confianza no se cuentan."})
+    revision_token = crear_revision_pendiente(
+        evidencia_ruta,
+        resultado_ruta,
+        detector,
+        procedencia,
+        _identidad_revision(request),
+    )
+    return plantillas.TemplateResponse(request, "revision_verificacion.html", {"pagina": "verificar", "detectados": detectados, "desconocidas": desconocidas, "detecciones_bajas": bajas, "estado_resultado": estado_resultado, "evidencia_url": evidencia_url, "resultado_url": resultado_url, "revision_token": revision_token, "detector_nombre": detectores[detector]["nombre"], "procedencia": procedencia, "comparacion_modelos": comparacion_modelos, "resumen_yolo": resumen_yolo, "total_yolo": sum(item["cantidad"] for item in resumen_yolo), "productos_catalogo": [producto_contexto(producto) for producto in productos_activos], "aviso": "Predicciones reales del detector seleccionado. Las detecciones de baja confianza no se cuentan."})
 
 
 @app.post("/verificar/guardar")
-async def guardar_revision(request: Request, evidencia_ruta: str = Form(), resultado_ruta: str = Form(""), detector: str = Form("manual"), procedencia: str = Form("prueba_fisica"), alcance: str = Form("captura parcial revisada por usuario"), alcance_confirmado: str | None = Form(None)):
-    ruta = (RAIZ / evidencia_ruta).resolve()
-    if CARPETA_EVIDENCIAS.resolve() not in ruta.parents or not ruta.is_file():
+async def guardar_revision(request: Request, revision_token: str = Form(), alcance: str = Form("captura parcial revisada por usuario"), alcance_confirmado: str | None = Form(None)):
+    revision_pendiente = obtener_revision_pendiente(request, revision_token)
+    if revision_pendiente is None:
+        return HTMLResponse("La revisión ya no está disponible. Analiza la evidencia nuevamente.", 400)
+    identificador_revision, revision = revision_pendiente
+    evidencia_ruta = str(revision["evidencia_ruta"])
+    resultado_ruta = str(revision["resultado_ruta"])
+    detector = str(revision["detector"])
+    procedencia = str(revision["procedencia"])
+    try:
+        resolver_ruta_controlada(
+            evidencia_ruta,
+            RAIZ,
+            "datos/evidencias",
+            extensiones=EXTENSIONES_IMAGEN,
+        )
+    except ValueError:
         return HTMLResponse("La evidencia de la verificación no es válida.", 400)
     formulario = await request.form()
     conteos: dict[str, int] = {}
@@ -1157,6 +1253,7 @@ async def guardar_revision(request: Request, evidencia_ruta: str = Form(), resul
                 "No se pudo enviar la corrección humana a Entrenamiento IA: verificación=%s",
                 codigo_verificacion,
             )
+    REVISIONES_PENDIENTES.pop(identificador_revision, None)
     return RedirectResponse("/historial?mensaje=guardado", 303)
 
     try:

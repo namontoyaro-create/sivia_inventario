@@ -18,7 +18,7 @@
 
   {% if detectados %}
   <form class="panel tabla revision-tabla resultados-confirmacion" method="post" action="/verificar/guardar">
-    <input type="hidden" name="evidencia_ruta" value="{{ evidencia_ruta }}"><input type="hidden" name="resultado_ruta" value="{{ resultado_ruta }}"><input type="hidden" name="detector" value="{{ detector }}"><input type="hidden" name="procedencia" value="{{ procedencia }}">
+    <input type="hidden" name="revision_token" value="{{ revision_token }}">
     <header class="cabecera-panel"><div><span class="icono-panel">&#10040;</span><h2>Productos detectados</h2></div><span class="badge normal">{{ total_yolo }} detectados</span></header>
     <p class="instruccion-confirmacion">El conteo de YOLO se conserva como evidencia. Confirma, reclasifica o deja sin confirmar cada recuadro antes de guardar.</p>
     <div class="tarjetas-resultados">

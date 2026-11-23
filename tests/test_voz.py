@@ -29,8 +29,9 @@ def test_asistente_voz_muestra_captura_y_requiere_confirmacion_para_movimientos(
         respuesta = cliente.get("/asistente-voz")
     assert respuesta.status_code == 200
     assert "Asistente de voz" in respuesta.text
-    assert "Transcribir audio" in respuesta.text
-    assert "requieren confirmación explícita" in respuesta.text
+    assert "Iniciar grabaci" in respuesta.text
+    assert "Detener grabaci" in respuesta.text
+    assert "nunca actualiza stock sin confirmaci" in respuesta.text
 
 
 def test_decodifica_wav_valido_para_whisper(tmp_path: Path):

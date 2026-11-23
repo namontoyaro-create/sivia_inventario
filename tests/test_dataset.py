@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 
 import cv2
 import numpy as np
@@ -6,7 +7,11 @@ import pytest
 
 from sivia_inventario.categorias import CATALOGO
 from sivia_inventario.dataset import auditar, proponer_caja, resolver_ruta_controlada
-from sivia_inventario.entrenamiento import ruta_configuracion_entrenamiento
+from sivia_inventario.entrenamiento import (
+    configuracion_ultralytics_temporal,
+    ruta_configuracion_entrenamiento,
+    ruta_dataset_declarada,
+)
 
 
 def test_proponer_caja_encierra_un_objeto_oscuro_sobre_fondo_claro():
@@ -107,7 +112,7 @@ def test_resolver_ruta_controlada_rechaza_enlace_simbolico(tmp_path):
     except OSError:
         pytest.skip("El entorno no permite crear enlaces simbólicos.")
 
-    with pytest.raises(ValueError, match="enlaces simbólicos"):
+    with pytest.raises(ValueError, match="ruta resuelta está fuera del directorio autorizado"):
         resolver_ruta_controlada(
             "datos/imagenes/candado/enlace.jpg", tmp_path, "datos/imagenes",
             extensiones={".jpg"},
@@ -120,3 +125,35 @@ def test_configuracion_entrenamiento_rechaza_archivo_fuera_de_datos(tmp_path):
 
     with pytest.raises(ValueError, match="fuera del directorio autorizado"):
         ruta_configuracion_entrenamiento(externo)
+
+
+def test_ruta_dataset_relativa_se_resuelve_desde_carpeta_del_yaml(tmp_path):
+    configuracion = tmp_path / "exportado" / "data.yaml"
+    configuracion.parent.mkdir()
+
+    assert ruta_dataset_declarada(configuracion, {"path": "."}) == configuracion.parent.resolve()
+
+
+def test_ruta_dataset_absoluta_se_mantiene_compatible(tmp_path):
+    configuracion = tmp_path / "configuracion" / "data.yaml"
+    configuracion.parent.mkdir()
+    dataset = tmp_path / "dataset" / "exportado"
+    dataset.mkdir(parents=True)
+
+    assert ruta_dataset_declarada(configuracion, {"path": str(dataset)}) == dataset.resolve()
+
+
+def test_yaml_temporal_para_ultralytics_se_elimina_si_falla(tmp_path):
+    configuracion = tmp_path / "exportado" / "data.yaml"
+    configuracion.parent.mkdir()
+    directorio_temporal = None
+
+    with pytest.raises(RuntimeError, match="fallo de entrenamiento"):
+        with configuracion_ultralytics_temporal(configuracion, {"path": ".", "names": ["candado"]}) as yaml_yolo:
+            directorio_temporal = yaml_yolo.parent
+            datos = json.loads(yaml_yolo.read_text(encoding="utf-8"))
+            assert Path(datos["path"]) == configuracion.parent.resolve()
+            raise RuntimeError("fallo de entrenamiento")
+
+    assert directorio_temporal is not None
+    assert not directorio_temporal.exists()

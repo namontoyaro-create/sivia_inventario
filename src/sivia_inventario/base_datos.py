@@ -11,6 +11,8 @@ from pathlib import Path
 import sqlite3
 
 from sivia_inventario.categorias import CATALOGO
+from sivia_inventario.postgres import conectar_postgres, es_url_postgres, usa_postgres
+from sivia_inventario.migraciones_postgres import aplicar_migraciones_postgres, exigir_esquema_postgres_actualizado
 
 RAIZ = Path(__file__).resolve().parents[2]
 
@@ -184,6 +186,14 @@ ON solicitudes_cuenta(estado, creada_en);
 
 @contextmanager
 def conectar(ruta: Path = RUTA_BASE_DATOS):
+    if es_url_postgres(ruta):
+        with conectar_postgres(ruta) as conexion:
+            yield conexion
+        return
+    if ruta == RUTA_BASE_DATOS and usa_postgres():
+        with conectar_postgres() as conexion:
+            yield conexion
+        return
     """Abre una conexión SQLite con claves foráneas activas."""
     ruta = Path(ruta)
     ruta.parent.mkdir(parents=True, exist_ok=True)
@@ -341,6 +351,14 @@ def inicializar_base_datos(ruta: Path = RUTA_BASE_DATOS) -> Path | None:
 
     Devuelve la ruta del respaldo cuando se aplic? una migraci?n estructural.
     """
+    if es_url_postgres(ruta):
+        # Una URL explícita se usa únicamente por la herramienta o pruebas de
+        # migración; el arranque web usa la rama siguiente y no modifica Neon.
+        aplicar_migraciones_postgres(ruta)
+        return None
+    if ruta == RUTA_BASE_DATOS and usa_postgres():
+        exigir_esquema_postgres_actualizado()
+        return None
     ruta = Path(ruta)
     tablas, columnas = _tablas_y_columnas(ruta)
     campos_v2 = {"sku", "codigo_barras", "proveedor", "precio_compra", "precio_venta", "stock_minimo", "unidad_medida", "estado_producto"}

@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block titulo %}{{ producto.producto }}{% endblock %}
+{% block contenido %}
+<p class="sobretitulo">Inventario &rsaquo; Detalle de producto</p>
+<section class="titulo-pagina">
+  <div class="titulo-icono"><b>&#9635;</b><div><h1>{{ producto.producto }}</h1><p>{{ producto.id }}{% if producto.sku %} · SKU {{ producto.sku }}{% endif %}</p></div></div>
+  <div class="acciones-form"><a class="boton secundario" href="/inventario">&larr; Inventario</a><a class="boton primario" href="/inventario/{{ producto.id }}/editar">Editar producto</a></div>
+</section>
+<section class="zona-formulario">
+  <section class="panel formulario">
+    <h2>Identificación y clasificación</h2>
+    <section class="campos-producto">
+      <p><strong>Código interno</strong><br>{{ producto.id }}</p><p><strong>Código de barras</strong><br>{{ producto.codigo_barras or 'No registrado' }}</p>
+      <p><strong>Categoría</strong><br>{{ producto.familia }}</p><p><strong>Clase IA oficial</strong><br>{{ producto.clase_ia }}</p>
+      <p><strong>Presentación</strong><br>{{ producto.presentacion }}</p><p><strong>Unidad de medida</strong><br>{{ producto.unidad_medida }}</p>
+      <p class="campo-ancho"><strong>Descripción</strong><br>{{ producto.descripcion or 'Sin descripción registrada.' }}</p>
+    </section>
+    <h2>Información comercial</h2>
+    <section class="campos-producto">
+      <p><strong>Marca</strong><br>{{ producto.marca or 'No registrada' }}</p><p><strong>Modelo</strong><br>{{ producto.modelo or 'No registrado' }}</p>
+      <p><strong>Tamaño / medida</strong><br>{{ producto.tamano or 'No registrado' }}</p><p><strong>Código comercial</strong><br>{{ producto.codigo_producto or 'No registrado' }}</p>
+      <p class="campo-ancho"><strong>Proveedor</strong><br>{{ producto.proveedor or 'No registrado' }}</p>
+    </section>
+    <h2>Precios e inventario</h2>
+    <section class="campos-producto">
+      <p><strong>Precio de compra</strong><br>S/ {{ '%.2f'|format(producto.precio_compra) }}</p><p><strong>Precio de venta</strong><br>S/ {{ '%.2f'|format(producto.precio_venta) }}</p>
+      <p><strong>Stock actual</strong><br>{{ producto.stock_registrado }}</p><p><strong>Stock mínimo</strong><br>{{ producto.stock_minimo }}</p>
+      <p class="campo-ancho"><strong>Estado</strong><br>{{ producto.estado_producto|capitalize }}</p>
+    </section>
+    <p class="nota-formulario">El stock se consulta aquí; se modifica únicamente por movimientos auditables confirmados.</p>
+  </section>
+  <aside class="vista-previa"><h2>Fotografía</h2><div class="vista-foto" style="width:100%;height:260px">{% if producto.imagen_url %}<a href="{{ producto.imagen_url }}" target="_blank"><img src="{{ producto.imagen_url }}" alt="{{ producto.producto }}"></a>{% else %}<span>Sin imagen</span>{% endif %}</div></aside>
+</section>
+{% endblock %}

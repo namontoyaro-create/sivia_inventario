@@ -7,6 +7,7 @@ __pycache__/
 
 # Caché de pruebas y cobertura
 .pytest_cache/
+.pytest-render-*/
 .coverage
 htmlcov/
 
@@ -33,6 +34,7 @@ datos/dataset_yolo*/
 
 # Base de datos local de la aplicación web
 datos/sivia.db
+datos/.sivia_sesion_secreta
 
 # Fotografías cargadas localmente desde Inventario
 datos/productos/

@@ -24,6 +24,18 @@ MODELO_PILOTO_V2 = RAIZ / "modelos/ferreteria_v2_20261013_021350_326502.pt"
 # La interfaz normal no expone esta elección. Para activar un futuro v3 se
 # configura SIVIA_DETECTOR_ACTIVO o se actualiza este valor, sin rediseñar UI.
 DETECTOR_ACTIVO_PREDETERMINADO = os.getenv("SIVIA_DETECTOR_ACTIVO", "piloto_sivia_v2")
+# Estos valores se aplican tanto a una fotografía subida como a un fotograma
+# capturado desde la cámara: ambos recorren procesar_imagen().
+IOU_NMS = 0.70
+MAX_DETECCIONES = 300
+COBERTURA_MAXIMA_REVISION = 0.75
+# El piloto v2 fue entrenado principalmente con una caja de clavos por foto.
+# Cuando devuelve una sola caja que ocupa una parte importante de una escena,
+# se revisa esa clase en cuatro zonas. Esto no altera ni vuelve a ejecutar las
+# demás clases; sirve para recuperar cajas físicas que quedaron demasiado
+# pequeñas al redimensionar una fotografía de estantería a 320 px.
+COBERTURA_MINIMA_REANALISIS_CAJA_CLAVOS = 0.35
+CUADRICULA_CAJA_CLAVOS = 2
 
 
 def detectores_disponibles() -> dict[str, dict]:
@@ -91,7 +103,10 @@ def _iou(caja_a: list[float], caja_b: list[float]) -> float:
     return interseccion / union if union else 0.0
 
 
-def filtrar_detecciones(detecciones: list[dict]) -> list[dict]:
+def filtrar_detecciones(
+    detecciones: list[dict],
+    dimensiones_imagen: tuple[int, int] | None = None,
+) -> list[dict]:
     """Elimina solo duplicados de la misma clase y marca conflictos entre clases.
 
     Nunca elimina dos clases distintas: podrían ser objetos físicos diferentes
@@ -107,6 +122,21 @@ def filtrar_detecciones(detecciones: list[dict]) -> list[dict]:
         ):
             continue
         deteccion["dudosa"] = deteccion["confianza"] < 0.55
+        deteccion["cobertura_imagen"] = 0.0
+        deteccion["recuadro_anormal"] = False
+        if dimensiones_imagen:
+            alto, ancho = dimensiones_imagen
+            area_imagen = alto * ancho
+            area_caja = max(0.0, deteccion["xyxy"][2] - deteccion["xyxy"][0]) * max(
+                0.0, deteccion["xyxy"][3] - deteccion["xyxy"][1]
+            )
+            deteccion["cobertura_imagen"] = area_caja / area_imagen if area_imagen else 0.0
+            # No se descarta automáticamente: una fotografía de un único
+            # producto puede llenar la imagen. Se exige revisión humana.
+            deteccion["recuadro_anormal"] = (
+                deteccion["cobertura_imagen"] >= COBERTURA_MAXIMA_REVISION
+            )
+            deteccion["dudosa"] = deteccion["dudosa"] or deteccion["recuadro_anormal"]
         deteccion["conflicto"] = False
         conservadas.append(deteccion)
     for indice, deteccion in enumerate(conservadas):
@@ -115,6 +145,86 @@ def filtrar_detecciones(detecciones: list[dict]) -> list[dict]:
                 deteccion["conflicto"] = otra["conflicto"] = True
                 deteccion["dudosa"] = otra["dudosa"] = True
     return conservadas
+
+
+def _detecciones_desde_resultado(resultado) -> list[dict]:
+    """Convierte la salida cruda de Ultralytics en el formato de SIVIA."""
+    return [
+        {
+            "clase": resultado.names[int(clase)],
+            "confianza": float(puntuacion),
+            "xyxy": [float(valor) for valor in caja],
+        }
+        for clase, puntuacion, caja in zip(
+            resultado.boxes.cls.cpu().tolist(),
+            resultado.boxes.conf.cpu().tolist(),
+            resultado.boxes.xyxy.cpu().tolist(),
+        )
+    ]
+
+
+def _cobertura(caja: list[float], alto: int, ancho: int) -> float:
+    """Calcula la proporción de imagen ocupada por una caja."""
+    area = max(0.0, caja[2] - caja[0]) * max(0.0, caja[3] - caja[1])
+    return area / (alto * ancho) if alto and ancho else 0.0
+
+
+def requiere_reanalisis_caja_clavos(detecciones: list[dict], alto: int, ancho: int) -> bool:
+    """Indica cuándo una caja grande puede ocultar varias cajas físicas.
+
+    No se usa para incrementar una cantidad arbitrariamente: es solo el
+    criterio para solicitar predicciones reales adicionales al mismo YOLO.
+    """
+    cajas = [item for item in detecciones if item["clase"] == "caja_clavos"]
+    return len(cajas) == 1 and _cobertura(cajas[0]["xyxy"], alto, ancho) >= COBERTURA_MINIMA_REANALISIS_CAJA_CLAVOS
+
+
+def reanalizar_caja_clavos_en_cuadricula(modelo, imagen, confianza: float, tamano: int) -> list[dict]:
+    """Predice `caja_clavos` en cuatro zonas y traslada las cajas al origen.
+
+    El resultado solo se adopta si hay por lo menos dos cajas. Por tanto, una
+    predicción global válida de una caja nunca se transforma en varias sin que
+    el modelo haya producido cada rectángulo por separado.
+    """
+    alto, ancho = imagen.shape[:2]
+    propuestas: list[dict] = []
+    for fila in range(CUADRICULA_CAJA_CLAVOS):
+        for columna in range(CUADRICULA_CAJA_CLAVOS):
+            x0, x1 = columna * ancho // CUADRICULA_CAJA_CLAVOS, (columna + 1) * ancho // CUADRICULA_CAJA_CLAVOS
+            y0, y1 = fila * alto // CUADRICULA_CAJA_CLAVOS, (fila + 1) * alto // CUADRICULA_CAJA_CLAVOS
+            recorte = imagen[y0:y1, x0:x1]
+            if recorte.size == 0:
+                continue
+            resultado = modelo.predict(
+                source=recorte,
+                device="cpu",
+                conf=confianza,
+                iou=IOU_NMS,
+                max_det=MAX_DETECCIONES,
+                imgsz=tamano,
+                save=False,
+                verbose=False,
+            )[0]
+            for deteccion in _detecciones_desde_resultado(resultado):
+                if deteccion["clase"] != "caja_clavos":
+                    continue
+                x_izq, y_arriba, x_der, y_abajo = deteccion["xyxy"]
+                deteccion["xyxy"] = [x_izq + x0, y_arriba + y0, x_der + x0, y_abajo + y0]
+                deteccion["origen"] = "reanálisis por cuadrícula"
+                propuestas.append(deteccion)
+    return filtrar_detecciones(propuestas, (alto, ancho)) if len(propuestas) >= 2 else []
+
+
+def dibujar_detecciones(imagen, detecciones: list[dict]):
+    """Dibuja exactamente las detecciones que alimentan el conteo mostrado."""
+    anotada = imagen.copy()
+    for deteccion in detecciones:
+        x1, y1, x2, y2 = (round(valor) for valor in deteccion["xyxy"])
+        color = (0, 180, 0) if deteccion["clase"] == "caja_clavos" else (255, 125, 0)
+        cv2.rectangle(anotada, (x1, y1), (x2, y2), color, 2)
+        etiqueta = f"{deteccion['clase']} {deteccion['confianza']:.2f}"
+        cv2.putText(anotada, etiqueta, (x1, max(18, y1 - 6)), cv2.FONT_HERSHEY_SIMPLEX, 0.55, color, 2, cv2.LINE_AA)
+    return anotada
 
 
 def procesar_imagen(
@@ -153,11 +263,22 @@ def procesar_imagen(
     tamano = metadata.get("tamano", 640)
     if type(tamano) is not int or not 32 <= tamano <= 1280 or tamano % 32:
         raise ValueError("Tamaño de inferencia inválido en la ficha del modelo.")
-    resultado = modelo.predict(source=imagen, device="cpu", conf=confianza, imgsz=tamano, save=False, verbose=False)[0]
-    detecciones = filtrar_detecciones([
-        {"clase": resultado.names[int(clase)], "confianza": float(puntuacion), "xyxy": [float(v) for v in caja]}
-        for clase, puntuacion, caja in zip(resultado.boxes.cls.cpu().tolist(), resultado.boxes.conf.cpu().tolist(), resultado.boxes.xyxy.cpu().tolist())
-    ])
+    resultado = modelo.predict(
+        source=imagen,
+        device="cpu",
+        conf=confianza,
+        iou=IOU_NMS,
+        max_det=MAX_DETECCIONES,
+        imgsz=tamano,
+        save=False,
+        verbose=False,
+    )[0]
+    alto, ancho = resultado.orig_shape
+    detecciones = filtrar_detecciones(_detecciones_desde_resultado(resultado), (alto, ancho))
+    if requiere_reanalisis_caja_clavos(detecciones, alto, ancho):
+        cajas_individuales = reanalizar_caja_clavos_en_cuadricula(modelo, imagen, confianza, tamano)
+        if cajas_individuales:
+            detecciones = [item for item in detecciones if item["clase"] != "caja_clavos"] + cajas_individuales
     conteos = contar_por_clase(d["clase"] for d in detecciones)
     reporte = {
         "imagen": str(imagen_path_segura),
@@ -184,7 +305,7 @@ def procesar_imagen(
     carpeta = salida / nombre
     carpeta.mkdir(parents=True, exist_ok=False)
     imagen_salida = carpeta / "detecciones.jpg"
-    ok, contenido = cv2.imencode(".jpg", resultado.plot())
+    ok, contenido = cv2.imencode(".jpg", dibujar_detecciones(imagen, detecciones))
     if not ok:
         raise ValueError("No se pudo generar la imagen de resultado.")
     imagen_salida.write_bytes(contenido.tobytes())

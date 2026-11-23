@@ -7,8 +7,11 @@ from __future__ import annotations
 
 import html
 import json
+import os
 from collections import Counter
 from pathlib import Path
+import shutil
+import tempfile
 
 import cv2
 
@@ -26,7 +29,7 @@ PREPARACION = RAIZ / "datos" / "anotaciones" / "preparacion_v2.json"
 REGISTRO_NUEVAS = RAIZ / "datos" / "anotaciones" / "registro_procedencia_nuevas.json"
 PROPUESTAS_PENDIENTES = RAIZ / "datos" / "anotaciones" / "propuestas_anotaciones_pendientes.json"
 GALERIA_PENDIENTES = RAIZ / "resultados" / "revision_anotaciones_pendientes"
-ORIGENES_VALIDOS = {"internet", "prueba_fisica", "distribuidora_atencio"}
+ORIGENES_VALIDOS = {"internet", "prueba_fisica", "distribuidora_atencio", "correccion_usuario"}
 SPLITS_VALIDOS = {"train", "val", "test"}
 CLASES = {producto.clase_ia for producto in CATALOGO}
 SPLITS_APROBACIONES = {
@@ -63,6 +66,7 @@ def ruta_imagen_controlada(archivo: str, raiz: Path | None = None) -> Path:
 def cargar_json(ruta: str | Path, raiz: Path | None = None) -> dict:
     raiz = raiz or RAIZ
     archivo = ruta_anotacion_controlada(ruta, raiz)
+    propuesta_escrita = False
     try:
         _, contenido = leer_archivo_controlado(archivo, raiz, "datos/anotaciones", extensiones={".json"})
         datos = json.loads(contenido.decode("utf-8"))
@@ -71,6 +75,147 @@ def cargar_json(ruta: str | Path, raiz: Path | None = None) -> dict:
     if not isinstance(datos, dict):
         raise ValueError("El archivo de anotaciones debe contener un objeto JSON.")
     return datos
+
+
+def escribir_json_atomico_con_respaldo(ruta: str | Path, datos: dict, raiz: Path | None = None) -> Path:
+    """Respalda un JSON y lo reemplaza atómicamente dentro de anotaciones."""
+    raiz = Path(raiz or RAIZ).resolve()
+    destino = ruta_anotacion_controlada(ruta, raiz)
+    destino.parent.mkdir(parents=True, exist_ok=True)
+    respaldo = destino.with_name(f"{destino.stem}.respaldo.json")
+    if destino.is_file():
+        shutil.copy2(destino, respaldo)
+    temporal = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w", encoding="utf-8", suffix=".json", prefix=f".{destino.stem}-",
+            dir=destino.parent, delete=False,
+        ) as archivo:
+            temporal = Path(archivo.name)
+            json.dump(datos, archivo, ensure_ascii=False, indent=2)
+            archivo.write("\n")
+            archivo.flush()
+            os.fsync(archivo.fileno())
+        os.replace(temporal, destino)
+    finally:
+        if temporal is not None and temporal.exists():
+            temporal.unlink()
+    return respaldo
+
+
+def _hashes_dataset_v2(raiz: Path) -> set[str]:
+    """Obtiene huellas ya aprobadas sin alterar manifiestos ni datasets."""
+    rutas = (
+        (raiz / "datos" / "anotaciones" / "ferreteria.json", "datos/anotaciones"),
+        (raiz / "datos" / "entrenamiento" / "pilotos" / "v2_20261012" / "anotaciones.json", "datos/entrenamiento"),
+    )
+    hashes: set[str] = set()
+    for ruta, directorio in rutas:
+        if not ruta.is_file():
+            continue
+        try:
+            _, contenido = leer_archivo_controlado(ruta, raiz, directorio, extensiones={".json"})
+            datos = json.loads(contenido.decode("utf-8"))
+        except (OSError, UnicodeDecodeError, json.JSONDecodeError, ValueError):
+            continue
+        hashes.update(
+            entrada["sha256"] for entrada in datos.get("imagenes", [])
+            if isinstance(entrada, dict) and isinstance(entrada.get("sha256"), str)
+        )
+    return hashes
+
+
+def _hashes_imagenes_locales(raiz: Path) -> set[str]:
+    imagenes = raiz / "datos" / "imagenes"
+    hashes: set[str] = set()
+    if not imagenes.is_dir():
+        return hashes
+    for ruta in imagenes.rglob("*"):
+        if not ruta.is_file() or ruta.suffix.lower() not in EXTENSIONES_IMAGEN:
+            continue
+        try:
+            hashes.add(sha256_archivo_controlado(ruta, raiz, "datos/imagenes"))
+        except ValueError:
+            continue
+    return hashes
+
+
+def registrar_correccion_verificacion(
+    evidencia_ruta: str,
+    clases_confirmadas: set[str],
+    *,
+    raiz: Path | None = None,
+    propuestas: Path | None = None,
+    registro: Path | None = None,
+) -> bool:
+    """Envía una evidencia corregida a revisión humana sin tocar el dataset.
+
+    No infiere coordenadas: las propuestas creadas requieren anotación manual
+    antes de que un administrador pueda aprobarlas.
+    """
+    raiz = Path(raiz or RAIZ).resolve()
+    propuestas = propuestas or PROPUESTAS_PENDIENTES
+    registro = registro or REGISTRO_NUEVAS
+    if not clases_confirmadas or not clases_confirmadas <= CLASES:
+        raise ValueError("La corrección no contiene clases oficiales de SIVIA.")
+    evidencia = resolver_ruta_controlada(
+        evidencia_ruta, raiz, "datos/evidencias", extensiones=EXTENSIONES_IMAGEN
+    )
+    if not evidencia.is_file():
+        raise ValueError("La evidencia de la corrección no está disponible.")
+    digest = sha256_archivo_controlado(evidencia, raiz, "datos/evidencias")
+    datos_propuestas = cargar_json(propuestas, raiz)
+    if digest in _hashes_dataset_v2(raiz) or digest in _hashes_imagenes_locales(raiz):
+        return False
+    if any(item.get("sha256") == digest for item in datos_propuestas.get("imagenes", [])):
+        return False
+
+    carpeta = raiz / "datos" / "imagenes" / "correccion_usuario"
+    carpeta.mkdir(parents=True, exist_ok=True)
+    destino = carpeta / f"correccion_{digest[:16]}{evidencia.suffix.lower()}"
+    if destino.exists():
+        return False
+    shutil.copy2(evidencia, destino)
+    archivo = destino.relative_to(raiz).as_posix()
+    clase_principal = sorted(clases_confirmadas)[0]
+    propuesta = {
+        "archivo": archivo,
+        "sha256": digest,
+        "clase_ia": clase_principal,
+        "origen": "correccion_usuario",
+        "grupo_escena": f"verificacion_{digest[:16]}",
+        "split_propuesto": "sin_reservar",
+        "estado": "requiere_anotacion_manual",
+        "objetos": [],
+        "nota_revision": (
+            "Corrección humana originada en Verificar inventario. "
+            "No se conservaron cajas YOLO fiables; delimita cada objeto visible antes de aprobar."
+        ),
+    }
+    datos_registro = cargar_json(registro, raiz)
+    datos_registro.setdefault("imagenes", []).append({
+        "archivo": archivo,
+        "sha256": digest,
+        "clase_ia": clase_principal,
+        "origen": "correccion_usuario",
+        "grupo_escena": propuesta["grupo_escena"],
+        "split_propuesto": "sin_reservar",
+        "observacion": "Evidencia copiada desde una verificación con corrección humana; pendiente de anotación manual.",
+    })
+    try:
+        # La cola es el registro principal: se persiste primero para que una
+        # falla posterior no haga desaparecer una corrección humana.
+        datos_propuestas.setdefault("imagenes", []).append(propuesta)
+        escribir_json_atomico_con_respaldo(propuestas, datos_propuestas, raiz)
+        propuesta_escrita = True
+        escribir_json_atomico_con_respaldo(registro, datos_registro, raiz)
+    except Exception:
+        # La copia sólo existe para una propuesta nueva; se elimina si no pudo
+        # registrarse. Nunca se toca la evidencia original de la verificación.
+        if not propuesta_escrita and destino.exists():
+            destino.unlink()
+        raise
+    return True
 
 
 def auditar_imagenes_nuevas(
@@ -190,7 +335,8 @@ def propuesta_pendiente_por_archivo(datos: dict, archivo: object) -> dict:
     for propuesta in datos.get("imagenes", []):
         if (
             propuesta.get("archivo") == archivo
-            and propuesta.get("estado", "pendiente_revision_visual") == "pendiente_revision_visual"
+            and propuesta.get("estado", "pendiente_revision_visual")
+            in {"pendiente_revision_visual", "requiere_anotacion_manual"}
         ):
             return propuesta
     raise ValueError("La propuesta indicada no está disponible para esta operación.")
@@ -200,13 +346,15 @@ def propuestas_pendientes(ruta: Path = PROPUESTAS_PENDIENTES, raiz: Path | None 
     """Obtiene solo las propuestas que aún esperan una decisión humana."""
     return [
         propuesta for propuesta in cargar_json(ruta, raiz).get("imagenes", [])
-        if propuesta.get("estado", "pendiente_revision_visual") == "pendiente_revision_visual"
+        if propuesta.get("estado", "pendiente_revision_visual")
+        in {"pendiente_revision_visual", "requiere_anotacion_manual"}
     ]
 
 
 def actualizar_rectangulos_propuesta(
     archivo: str,
     objetos: list[dict],
+    split_propuesto: str | None = None,
 ) -> None:
     """Actualiza una propuesta pendiente desde la interfaz, nunca el manifiesto."""
     from sivia_inventario.dataset import validar_caja
@@ -218,9 +366,14 @@ def actualizar_rectangulos_propuesta(
         raise ValueError("La propuesta debe conservar objetos de clases válidas.")
     for objeto in objetos:
         validar_caja(objeto.get("xyxy"))
+    if split_propuesto is not None:
+        if split_propuesto not in SPLITS_VALIDOS:
+            raise ValueError("El destino propuesto no es válido.")
+        propuesta["split_propuesto"] = split_propuesto
     propuesta["objetos"] = objetos
+    propuesta["estado"] = "pendiente_revision_visual"
     propuesta["nota_revision"] = "Rectángulos ajustados manualmente desde Entrenamiento IA; pendiente de aprobación."
-    ruta_propuestas.write_text(json.dumps(datos, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    escribir_json_atomico_con_respaldo(ruta_propuestas, datos)
 
 
 def rechazar_propuesta(archivo: str, motivo: str) -> None:

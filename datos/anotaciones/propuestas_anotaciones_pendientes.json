@@ -9,18 +9,83 @@
       "origen": "origen_no_confirmado",
       "grupo_escena": "estanteria_candados_01",
       "split_propuesto": "test",
-      "estado": "pendiente_revision_visual",
+      "estado": "rechazada_usuario",
       "objetos": [
-        {"clase": "candado", "xyxy": [0.0556, 0.2674, 0.2648, 0.5590]},
-        {"clase": "candado", "xyxy": [0.2796, 0.2674, 0.4870, 0.5590]},
-        {"clase": "candado", "xyxy": [0.5046, 0.2674, 0.7194, 0.5590]},
-        {"clase": "candado", "xyxy": [0.7389, 0.2674, 0.9944, 0.5590]},
-        {"clase": "candado", "xyxy": [0.0528, 0.6924, 0.2620, 0.9562]},
-        {"clase": "candado", "xyxy": [0.2806, 0.6924, 0.4870, 0.9562]},
-        {"clase": "candado", "xyxy": [0.5046, 0.6979, 0.7194, 0.9569]},
-        {"clase": "candado", "xyxy": [0.7370, 0.6979, 0.9972, 0.9569]}
+        {
+          "clase": "candado",
+          "xyxy": [
+            0.0556,
+            0.2674,
+            0.2648,
+            0.559
+          ]
+        },
+        {
+          "clase": "candado",
+          "xyxy": [
+            0.2796,
+            0.2674,
+            0.487,
+            0.559
+          ]
+        },
+        {
+          "clase": "candado",
+          "xyxy": [
+            0.5046,
+            0.2674,
+            0.7194,
+            0.559
+          ]
+        },
+        {
+          "clase": "candado",
+          "xyxy": [
+            0.7389,
+            0.2674,
+            0.9944,
+            0.559
+          ]
+        },
+        {
+          "clase": "candado",
+          "xyxy": [
+            0.0528,
+            0.6924,
+            0.262,
+            0.9562
+          ]
+        },
+        {
+          "clase": "candado",
+          "xyxy": [
+            0.2806,
+            0.6924,
+            0.487,
+            0.9562
+          ]
+        },
+        {
+          "clase": "candado",
+          "xyxy": [
+            0.5046,
+            0.6979,
+            0.7194,
+            0.9569
+          ]
+        },
+        {
+          "clase": "candado",
+          "xyxy": [
+            0.737,
+            0.6979,
+            0.9972,
+            0.9569
+          ]
+        }
       ],
-      "nota_revision": "Propuesta de prueba independiente: ocho candados empaquetados visibles (cuatro verdes y cuatro amarillos). No incluye etiquetas de precio ni productos parcialmente visibles en los bordes. No se usar\u00e1 para entrenamiento hasta una aprobaci\u00f3n humana."
+      "nota_revision": "Propuesta de prueba independiente: ocho candados empaquetados visibles (cuatro verdes y cuatro amarillos). No incluye etiquetas de precio ni productos parcialmente visibles en los bordes. No se usará para entrenamiento hasta una aprobación humana.",
+      "motivo_rechazo": "Rechazada por revisión humana desde SIVIA."
     }
   ]
 }

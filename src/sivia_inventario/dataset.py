@@ -310,7 +310,7 @@ def exportar(manifiesto: Path, salida: Path, raiz: Path = RAIZ) -> Path:
             coordenadas = validar_caja(obj["xyxy"])
             lineas.append(str(datos["clases"].index(obj["clase"])) + " " + " ".join(f"{v:.8f}" for v in coordenadas))
         (salida / "labels" / e["split"] / f"{nombre}.txt").write_text("\n".join(lineas) + ("\n" if lineas else ""), encoding="utf-8")
-    config = {"path": salida.as_posix(), "train": "images/train", "val": "images/val", "names": datos["clases"]}
+    config = {"path": ".", "train": "images/train", "val": "images/val", "names": datos["clases"]}
     if informe["imagenes"].get("test"):
         config["test"] = "images/test"
     # JSON es un subconjunto de YAML: evita otra dependencia directa.

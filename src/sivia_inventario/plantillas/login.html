@@ -11,7 +11,7 @@
     <p>Accede con tu cuenta autorizada.</p>
     {% if error %}<p class="error">{{ error }}</p>{% endif %}
     {% if configuracion_pendiente %}<p class="acceso-nota">SIVIA aún no tiene una cuenta activa. La configuración inicial requiere un código autorizado del entorno.</p>{% endif %}
-    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_login_token }}">
     <label>Usuario<input name="usuario" value="{{ usuario_ingresado|default('') }}" autocomplete="username" required></label>
     <label>Contrase&ntilde;a<input name="contrasena" type="password" autocomplete="current-password" required></label>
     <button class="boton primario" type="submit">Ingresar a SIVIA</button>

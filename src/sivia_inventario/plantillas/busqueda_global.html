@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block titulo %}B&uacute;squeda de productos{% endblock %}
+{% block contenido %}
+<p class="sobretitulo">Cat&aacute;logo de productos</p>
+<section class="titulo-pagina"><div><h1>Resultados de b&uacute;squeda</h1><p>{% if consulta %}Coincidencias para <strong>&ldquo;{{ consulta }}&rdquo;</strong>.{% else %}Busca por nombre, c&oacute;digo interno, SKU o c&oacute;digo de barras.{% endif %}</p></div><a class="boton secundario" href="/inventario">Ir al inventario</a></section>
+{% if consulta and resultados %}
+<section class="panel tabla tabla-busqueda"><table><thead><tr><th>Foto</th><th>C&oacute;digo interno</th><th>SKU</th><th>C&oacute;digo de barras</th><th>Producto</th><th>Stock</th><th></th></tr></thead><tbody>{% for producto in resultados %}<tr><td>{% if producto.imagen_url %}<img class="foto-producto" src="{{ producto.imagen_url }}" alt="{{ producto.producto }}">{% else %}<span class="foto-faltante">Sin imagen</span>{% endif %}</td><td><strong>{{ producto.id }}</strong></td><td>{{ producto.sku or '&mdash;' }}</td><td>{{ producto.codigo_barras or '&mdash;' }}</td><td>{{ producto.producto }}<small>{{ producto.presentacion }}</small></td><td>{{ producto.stock_registrado }}</td><td><a class="boton secundario" href="/inventario/{{ producto.id }}">Ver detalle</a></td></tr>{% endfor %}</tbody></table></section>
+{% elif consulta %}
+<section class="panel estado-vacio"><h2>Sin resultados</h2><p>No se encontr&oacute; un producto activo con ese nombre, c&oacute;digo interno, SKU o c&oacute;digo de barras.</p><a class="boton secundario" href="/inventario">Ver cat&aacute;logo completo</a></section>
+{% else %}
+<section class="panel estado-vacio"><h2>Escribe un t&eacute;rmino de b&uacute;squeda</h2><p>Usa la barra superior para encontrar un producto y abrir su ficha.</p></section>
+{% endif %}
+{% endblock %}

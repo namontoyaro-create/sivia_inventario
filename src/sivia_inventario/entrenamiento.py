@@ -1,10 +1,12 @@
 """Entrenamiento local de un prototipo, con trazabilidad de datos y métricas."""
 
 import argparse
+from contextlib import contextmanager
 from datetime import datetime, timezone
 import json
 from pathlib import Path
 import shutil
+import tempfile
 
 from sivia_inventario.dataset import RAIZ, auditar, resolver_ruta_controlada, validar_caja
 from sivia_inventario.seguridad_archivos import leer_archivo_controlado, sha256_archivo_controlado
@@ -24,6 +26,29 @@ def ruta_configuracion_entrenamiento(config: str | Path) -> Path:
     )
 
 
+def ruta_dataset_declarada(config: Path, datos: dict) -> Path:
+    """Resuelve la ruta del dataset respecto al YAML que la declara."""
+    valor = datos.get("path", ".")
+    if not isinstance(valor, str) or not valor.strip():
+        raise ValueError("La ruta del dataset debe ser un texto no vacío.")
+    ruta = Path(valor)
+    return ruta.resolve() if ruta.is_absolute() else (config.parent / ruta).resolve()
+
+
+@contextmanager
+def configuracion_ultralytics_temporal(config: Path, datos: dict):
+    """Crea un YAML absoluto efímero para Ultralytics y lo limpia siempre."""
+    configuracion = dict(datos)
+    configuracion["path"] = str(ruta_dataset_declarada(config, configuracion))
+    with tempfile.TemporaryDirectory(prefix="sivia-yolo-") as directorio:
+        yaml_temporal = Path(directorio) / "data.yaml"
+        yaml_temporal.write_text(
+            json.dumps(configuracion, ensure_ascii=False, indent=2) + "\n",
+            encoding="utf-8",
+        )
+        yield yaml_temporal
+
+
 def verificar_exportacion(config: Path) -> dict:
     """Comprueba que las imágenes y etiquetas exportadas corresponden al manifiesto."""
     config = ruta_configuracion_entrenamiento(config)
@@ -32,7 +57,7 @@ def verificar_exportacion(config: Path) -> dict:
     )
     datos = json.loads(contenido_config.decode("utf-8"))
     carpeta = config.parent
-    if Path(datos.get("path", "")).resolve() != carpeta:
+    if ruta_dataset_declarada(config, datos) != carpeta.resolve():
         raise ValueError("La ruta del dataset no coincide con la carpeta de exportación.")
     manifiesto, informe = auditar(carpeta / "anotaciones.json")
     if datos.get("names") != manifiesto["clases"] or "download" in datos:
@@ -68,16 +93,23 @@ def main() -> None:
     )
     parser.add_argument("--epocas", type=int, default=30)
     parser.add_argument("--tamano", type=int, default=320)
+    parser.add_argument("--congelar", type=int, default=0,
+                        help="Capas iniciales a congelar (0 realiza fine-tuning completo).")
     parser.add_argument("--nombre", default="piloto", help="Prefijo aislado para resultados y pesos.")
     parser.add_argument("--experimental", action="store_true", help="Reconoce que el dataset piloto no valida fiabilidad en inventario")
     args = parser.parse_args()
     if not args.experimental:
         parser.error("Este dataset es experimental. Revise su informe y use --experimental para la prueba técnica.")
-    if not 1 <= args.epocas <= 300 or not 32 <= args.tamano <= 1280 or args.tamano % 32:
+    if (not 1 <= args.epocas <= 300 or not 32 <= args.tamano <= 1280
+            or args.tamano % 32 or not 0 <= args.congelar <= 20):
         parser.error("Épocas: 1–300. Tamaño: múltiplo de 32 entre 32 y 1280.")
     try:
         datos_seguro = DATASETS_ENTRENAMIENTO[args.dataset]
         informe = verificar_exportacion(datos_seguro)
+        _, contenido_config = leer_archivo_controlado(
+            datos_seguro, RAIZ, "datos/entrenamiento", extensiones={".yaml", ".yml"}
+        )
+        configuracion_dataset = json.loads(contenido_config.decode("utf-8"))
         from ultralytics import YOLO, __version__ as version_yolo
         import torch
 
@@ -90,14 +122,18 @@ def main() -> None:
         for aviso in informe["advertencias"]:
             print(aviso, flush=True)
         modelo = YOLO(str(RAIZ / "modelos/yolo26n.pt"))
-        modelo.train(
-            data=str(datos_seguro), epochs=args.epocas, imgsz=args.tamano,
+        with configuracion_ultralytics_temporal(datos_seguro, configuracion_dataset) as yaml_yolo:
+            modelo.train(
+            data=str(yaml_yolo), epochs=args.epocas, imgsz=args.tamano,
             batch=4, nbs=4, optimizer="AdamW", lr0=0.001,
             device="cpu", workers=0, amp=False, cache=False,
-            seed=42, deterministic=True, freeze=10, patience=25,
+            seed=42, deterministic=True, freeze=args.congelar, patience=25,
+            # Variación moderada para que una foto con otro fondo o iluminación
+            # no sea tratada como una clase distinta. No crea objetos nuevos.
+            degrees=5.0, translate=0.08, scale=0.25, fliplr=0.5, mosaic=0.30,
             project=str(RAIZ / "resultados/entrenamiento"), name=f"{nombre}_{instante}",
             exist_ok=False, plots=True, verbose=False,
-        )
+            )
         mejor = Path(modelo.trainer.best)
         if not mejor.is_file():
             raise RuntimeError("No se generó best.pt.")
@@ -110,6 +146,7 @@ def main() -> None:
             "ultralytics": version_yolo, "torch": torch.__version__,
             "epocas_solicitadas": args.epocas, "tamano": args.tamano,
             "batch": 4, "nbs": 4, "optimizer": "AdamW", "lr0": 0.001,
+            "congelar": args.congelar,
             "dataset": informe, "metricas_validacion_piloto": metricas,
             "entrenamiento": str(mejor.parent.parent.relative_to(RAIZ)),
         }

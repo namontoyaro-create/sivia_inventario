@@ -12,6 +12,7 @@ from sivia_inventario.preparacion_v2 import (
     plan_mejora_dataset,
     resumen_clases,
     actualizar_rectangulos_propuesta,
+    registrar_correccion_verificacion,
     rechazar_propuesta,
 )
 import pytest
@@ -128,6 +129,34 @@ def test_registrar_aprobaciones_conserva_split_propuesto_para_nueva_foto(tmp_pat
 
     registrado = json.loads(manifiesto.read_text(encoding="utf-8"))["imagenes"][0]
     assert registrado["split"] == "test"
+
+
+def test_correccion_verificacion_no_duplica_imagen_ya_presente_en_dataset_v2(tmp_path, monkeypatch):
+    evidencia = tmp_path / "datos" / "evidencias" / "captura.jpg"
+    evidencia.parent.mkdir(parents=True)
+    evidencia.write_bytes(b"misma evidencia")
+    digest = __import__("hashlib").sha256(evidencia.read_bytes()).hexdigest()
+    anotaciones = tmp_path / "datos" / "anotaciones"
+    anotaciones.mkdir()
+    propuestas = anotaciones / "propuestas.json"
+    registro = anotaciones / "registro.json"
+    propuestas.write_text(json.dumps({"imagenes": []}), encoding="utf-8")
+    registro.write_text(json.dumps({"imagenes": []}), encoding="utf-8")
+    piloto = tmp_path / "datos" / "entrenamiento" / "pilotos" / "v2_20261012"
+    piloto.mkdir(parents=True)
+    (piloto / "anotaciones.json").write_text(
+        json.dumps({"imagenes": [{"sha256": digest}]}), encoding="utf-8"
+    )
+
+    _usar_rutas_temporales(monkeypatch, tmp_path, propuestas, propuestas, registro)
+    registrado = registrar_correccion_verificacion(
+        "datos/evidencias/captura.jpg", {"candado"}, raiz=tmp_path,
+        propuestas=propuestas, registro=registro,
+    )
+
+    assert registrado is False
+    assert json.loads(propuestas.read_text(encoding="utf-8"))["imagenes"] == []
+    assert not (tmp_path / "datos" / "imagenes" / "correccion_usuario").exists()
 
 
 @pytest.mark.parametrize("accion", ["procedencia", "rectangulos", "rechazo", "aprobacion"])

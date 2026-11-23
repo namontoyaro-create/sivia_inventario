@@ -8,6 +8,8 @@ import re
 from uuid import uuid4
 
 from sivia_inventario.base_datos import RAIZ, RUTA_BASE_DATOS, conectar
+from sivia_inventario.postgres import es_url_postgres, usa_postgres
+from sivia_inventario.categorias import CATALOGO
 
 
 @dataclass(frozen=True)
@@ -36,6 +38,7 @@ class ProductoInventario:
 
 
 ESTADOS_PRODUCTO = {"activo", "inactivo", "descontinuado"}
+CLASES_IA_OFICIALES = frozenset(item.clase_ia for item in CATALOGO)
 
 FOTOGRAFIAS_CATALOGO_VERIFICADAS = {
     "bolsa_clavos": "datos/imagenes/bolsa_clavos/bolsa_clavos_01.jpg",
@@ -60,8 +63,20 @@ def _texto_opcional(valor, campo: str, maximo: int) -> str | None:
     return valor or None
 
 
+def es_ean13_valido(codigo: str) -> bool:
+    """Comprueba el dígito verificador de un EAN-13 sin consultar servicios externos."""
+    return (
+        isinstance(codigo, str)
+        and len(codigo) == 13
+        and codigo.isdigit()
+        and sum((1 if indice % 2 == 0 else 3) * int(digito)
+                for indice, digito in enumerate(codigo)) % 10 == 0
+    )
+
+
 def _validar_producto(codigo, producto, categoria, categoria_ia, presentacion, stock,
-                      *, sku=None, codigo_barras=None, proveedor=None,
+                      *, marca=None, modelo=None, tamano=None, codigo_producto=None,
+                      sku=None, codigo_barras=None, proveedor=None,
                       precio_compra=0, precio_venta=0, stock_minimo=0,
                       unidad_medida="unidad", estado_producto="activo"):
     valores = (codigo, producto, categoria, categoria_ia, presentacion)
@@ -69,14 +84,23 @@ def _validar_producto(codigo, producto, categoria, categoria_ia, presentacion, s
         raise ValueError("Código, producto, categoría, categoría IA y presentación son obligatorios.")
     if not codigo.strip().replace("-", "").replace("_", "").isalnum():
         raise ValueError("El código solo admite letras, números, guiones y guiones bajos.")
+    categoria_ia = categoria_ia.strip()
+    if categoria_ia not in CLASES_IA_OFICIALES:
+        raise ValueError("La categoría IA debe pertenecer a las clases oficiales de SIVIA.")
     if type(stock) is not int or stock < 0:
         raise ValueError("El stock registrado debe ser un entero no negativo.")
+    marca = _texto_opcional(marca, "La marca", 80)
+    modelo = _texto_opcional(modelo, "El modelo", 80)
+    tamano = _texto_opcional(tamano, "El tamaño", 60)
+    codigo_producto = _texto_opcional(codigo_producto, "El código comercial", 60)
     sku = _texto_opcional(sku, "El SKU", 40)
     if sku and not re.fullmatch(r"[A-Za-z0-9_-]{3,40}", sku):
         raise ValueError("El SKU debe tener entre 3 y 40 letras, números, guiones o guiones bajos.")
     codigo_barras = _texto_opcional(codigo_barras, "El código de barras", 14)
     if codigo_barras and not re.fullmatch(r"\d{8,14}", codigo_barras):
         raise ValueError("El código de barras debe contener entre 8 y 14 dígitos.")
+    if codigo_barras and len(codigo_barras) == 13 and not es_ean13_valido(codigo_barras):
+        raise ValueError("El código EAN-13 no tiene un dígito verificador válido.")
     proveedor = _texto_opcional(proveedor, "El proveedor", 100)
     if isinstance(precio_compra, bool) or not isinstance(precio_compra, (int, float)) or precio_compra < 0:
         raise ValueError("El precio de compra debe ser un número no negativo.")
@@ -89,7 +113,9 @@ def _validar_producto(codigo, producto, categoria, categoria_ia, presentacion, s
     if estado_producto not in ESTADOS_PRODUCTO:
         raise ValueError("El estado del producto no es válido.")
     return {
-        "sku": sku, "codigo_barras": codigo_barras, "proveedor": proveedor,
+        "marca": marca, "modelo": modelo, "tamano": tamano,
+        "codigo_producto": codigo_producto, "sku": sku,
+        "codigo_barras": codigo_barras, "proveedor": proveedor,
         "precio_compra": float(precio_compra), "precio_venta": float(precio_venta),
         "stock_minimo": stock_minimo, "unidad_medida": unidad_medida.strip(),
         "estado_producto": estado_producto,
@@ -109,12 +135,15 @@ def obtener_producto(codigo: str, ruta: Path = RUTA_BASE_DATOS) -> ProductoInven
 def crear_producto(codigo, producto, categoria, categoria_ia, presentacion, stock,
                    ruta: Path = RUTA_BASE_DATOS, descripcion: str = "",
                    imagen_ruta: str | None = None, *, sku: str | None = None,
+                   marca: str | None = None, modelo: str | None = None,
+                   tamano: str | None = None, codigo_producto: str | None = None,
                    codigo_barras: str | None = None, proveedor: str | None = None,
                    precio_compra: float = 0, precio_venta: float = 0,
                    stock_minimo: int = 0, unidad_medida: str = "unidad",
                    estado_producto: str = "activo") -> None:
     comerciales = _validar_producto(
-        codigo, producto, categoria, categoria_ia, presentacion, stock, sku=sku,
+        codigo, producto, categoria, categoria_ia, presentacion, stock,
+        marca=marca, modelo=modelo, tamano=tamano, codigo_producto=codigo_producto, sku=sku,
         codigo_barras=codigo_barras, proveedor=proveedor, precio_compra=precio_compra,
         precio_venta=precio_venta, stock_minimo=stock_minimo,
         unidad_medida=unidad_medida, estado_producto=estado_producto,
@@ -123,12 +152,14 @@ def crear_producto(codigo, producto, categoria, categoria_ia, presentacion, stoc
         try:
             conexion.execute(
                 "INSERT INTO productos (id,producto,familia,presentacion,unidad_conteo,"
-                "clase_ia,stock_registrado,origen_stock,descripcion,imagen_ruta,sku,"
+                "clase_ia,marca,modelo,tamano,codigo_producto,stock_registrado,origen_stock,descripcion,imagen_ruta,sku,"
                 "codigo_barras,proveedor,precio_compra,precio_venta,stock_minimo,"
                 "unidad_medida,estado_producto) "
-                "VALUES (?,?,?,?,?,?,?,'real',?,?,?,?,?,?,?,?,?,?)",
+                "VALUES (?,?,?,?,?,?,?,?,?,?,?,'real',?,?,?,?,?,?,?,?,?,?)",
                 (codigo.strip(), producto.strip(), categoria.strip(), presentacion.strip(),
-                 f"Cada {presentacion.strip().lower()} visible", categoria_ia.strip(), stock,
+                 f"Cada {presentacion.strip().lower()} visible", categoria_ia.strip(),
+                 comerciales["marca"], comerciales["modelo"], comerciales["tamano"],
+                 comerciales["codigo_producto"], stock,
                  descripcion.strip(), imagen_ruta, comerciales["sku"],
                  comerciales["codigo_barras"], comerciales["proveedor"],
                  comerciales["precio_compra"], comerciales["precio_venta"],
@@ -136,7 +167,7 @@ def crear_producto(codigo, producto, categoria, categoria_ia, presentacion, stoc
                  comerciales["estado_producto"]),
             )
         except Exception as error:
-            if "UNIQUE constraint failed" in str(error):
+            if "UNIQUE constraint failed" in str(error) or "duplicate key value" in str(error):
                 raise ValueError("Ya existe un producto con ese c?digo, SKU o c?digo de barras.") from error
             raise
 
@@ -144,12 +175,15 @@ def crear_producto(codigo, producto, categoria, categoria_ia, presentacion, stoc
 def actualizar_producto(codigo, producto, categoria, categoria_ia, presentacion, stock,
                         ruta: Path = RUTA_BASE_DATOS, descripcion: str = "",
                         imagen_ruta: str | None = None, *, sku: str | None = None,
+                        marca: str | None = None, modelo: str | None = None,
+                        tamano: str | None = None, codigo_producto: str | None = None,
                         codigo_barras: str | None = None, proveedor: str | None = None,
                         precio_compra: float = 0, precio_venta: float = 0,
                         stock_minimo: int = 0, unidad_medida: str = "unidad",
                         estado_producto: str = "activo") -> None:
     comerciales = _validar_producto(
-        codigo, producto, categoria, categoria_ia, presentacion, stock, sku=sku,
+        codigo, producto, categoria, categoria_ia, presentacion, stock,
+        marca=marca, modelo=modelo, tamano=tamano, codigo_producto=codigo_producto, sku=sku,
         codigo_barras=codigo_barras, proveedor=proveedor, precio_compra=precio_compra,
         precio_venta=precio_venta, stock_minimo=stock_minimo,
         unidad_medida=unidad_medida, estado_producto=estado_producto,
@@ -164,20 +198,21 @@ def actualizar_producto(codigo, producto, categoria, categoria_ia, presentacion,
             raise ValueError("El stock no se edita aqu?. Registra un movimiento para modificar existencias.")
         try:
             actualizado = conexion.execute(
-                "UPDATE productos SET producto=?,familia=?,clase_ia=?,presentacion=?,"
+                "UPDATE productos SET producto=?,familia=?,clase_ia=?,presentacion=?,marca=?,modelo=?,tamano=?,codigo_producto=?,"
                 "unidad_conteo=?,descripcion=?,imagen_ruta=COALESCE(?, imagen_ruta),"
                 "sku=?,codigo_barras=?,proveedor=?,precio_compra=?,precio_venta=?,"
                 "stock_minimo=?,unidad_medida=?,estado_producto=?,actualizado_en=CURRENT_TIMESTAMP "
                 "WHERE id=? AND activo=1",
                 (producto.strip(), categoria.strip(), categoria_ia.strip(), presentacion.strip(),
-                 f"Cada {presentacion.strip().lower()} visible", descripcion.strip(), imagen_ruta,
+                 comerciales["marca"], comerciales["modelo"], comerciales["tamano"],
+                 comerciales["codigo_producto"], f"Cada {presentacion.strip().lower()} visible", descripcion.strip(), imagen_ruta,
                  comerciales["sku"], comerciales["codigo_barras"], comerciales["proveedor"],
                  comerciales["precio_compra"], comerciales["precio_venta"],
                  comerciales["stock_minimo"], comerciales["unidad_medida"],
                  comerciales["estado_producto"], codigo),
             )
         except Exception as error:
-            if "UNIQUE constraint failed" in str(error):
+            if "UNIQUE constraint failed" in str(error) or "duplicate key value" in str(error):
                 raise ValueError("Ya existe un producto con ese SKU o c?digo de barras.") from error
             raise
         if not actualizado.rowcount:
@@ -309,8 +344,15 @@ def guardar_verificacion(nombre: str, evidencia_ruta: str, conteos: dict[str, in
             detectado = confirmados.get(clave, 0)
             producto = resolver(clave)
             assert producto is not None
-            diferencia = detectado - producto.stock_registrado if alcance_confirmado else 0
-            estado = ("stock_coincide" if diferencia == 0 else "requiere_revision") if alcance_confirmado else "no_concluyente"
+            # Una predicción descartada o reclasificada queda como evidencia de
+            # YOLO, pero no genera una diferencia artificial frente al stock.
+            fue_confirmado = clave in confirmados
+            diferencia = detectado - producto.stock_registrado if alcance_confirmado and fue_confirmado else 0
+            estado = (
+                ("stock_coincide" if diferencia == 0 else "requiere_revision")
+                if alcance_confirmado and fue_confirmado
+                else "no_concluyente"
+            )
             conexion.execute(
                 "INSERT INTO verificaciones(sesion_id,captura_id,producto_id,stock_registrado,"
                 "cantidad_detectada,cantidad_yolo,diferencia,estado,confianza_promedio) VALUES (?,?,?,?,?,?,?,?,?)",
@@ -332,8 +374,24 @@ def listar_verificaciones(ruta: Path = RUTA_BASE_DATOS) -> list[dict]:
     return [dict(fila) for fila in filas]
 
 
-def listar_sesiones_verificacion(ruta: Path = RUTA_BASE_DATOS) -> list[dict]:
+def listar_sesiones_verificacion(ruta: Path = RUTA_BASE_DATOS, *, fecha_desde: str | None = None,
+                                 fecha_hasta: str | None = None,
+                                 producto_id: str | None = None) -> list[dict]:
     """Una fila por captura guardada, no una fila por cada producto."""
+    condiciones: list[str] = []
+    parametros: list[str] = []
+    if fecha_desde:
+        condiciones.append("substr(s.finalizada_en, 1, 10) >= ?")
+        parametros.append(fecha_desde)
+    if fecha_hasta:
+        condiciones.append("substr(s.finalizada_en, 1, 10) <= ?")
+        parametros.append(fecha_hasta)
+    if producto_id:
+        condiciones.append(
+            "EXISTS (SELECT 1 FROM verificaciones vf WHERE vf.sesion_id=s.id AND vf.producto_id=?)"
+        )
+        parametros.append(producto_id)
+    where = f"WHERE {' AND '.join(condiciones)}" if condiciones else ""
     with conectar(ruta) as conexion:
         filas = conexion.execute(
             "SELECT s.id, COALESCE(s.codigo_verificacion, printf('VER-%04d', s.id)) AS codigo, "
@@ -342,7 +400,8 @@ def listar_sesiones_verificacion(ruta: Path = RUTA_BASE_DATOS) -> list[dict]:
             "SUM(CASE WHEN v.estado='requiere_revision' THEN 1 ELSE 0 END) AS diferencias "
             "FROM sesiones_verificacion s LEFT JOIN capturas_verificacion c ON c.sesion_id=s.id "
             "LEFT JOIN verificaciones v ON v.sesion_id=s.id AND v.cantidad_detectada > 0 "
-            "GROUP BY s.id ORDER BY s.id DESC"
+            f"{where} GROUP BY s.id ORDER BY s.id DESC",
+            parametros,
         ).fetchall()
     return [dict(fila) for fila in filas]
 
@@ -369,14 +428,24 @@ def obtener_sesion_verificacion(codigo: str, ruta: Path = RUTA_BASE_DATOS) -> di
 
 
 def listar_alertas(ruta: Path = RUTA_BASE_DATOS) -> list[dict]:
-    return [fila for fila in listar_verificaciones(ruta) if fila["estado"] == "requiere_revision"]
+    with conectar(ruta) as conexion:
+        filas = conexion.execute(
+            "SELECT v.id, v.guardada_en, p.id AS codigo, p.producto, p.clase_ia, "
+            "v.stock_registrado, v.cantidad_detectada, v.diferencia, v.estado, c.ruta_evidencia, "
+            "COALESCE(s.codigo_verificacion, printf('VER-%04d', s.id)) AS codigo_verificacion "
+            "FROM verificaciones v JOIN productos p ON p.id=v.producto_id "
+            "JOIN sesiones_verificacion s ON s.id=v.sesion_id "
+            "LEFT JOIN capturas_verificacion c ON c.id=v.captura_id "
+            "WHERE v.estado='requiere_revision' ORDER BY v.id DESC"
+        ).fetchall()
+    return [dict(fila) for fila in filas]
 
 
 def resumen_dashboard(ruta: Path = RUTA_BASE_DATOS) -> dict[str, int]:
     with conectar(ruta) as conexion:
         productos = conexion.execute("SELECT COUNT(*) FROM productos WHERE activo = 1").fetchone()[0]
         stock = conexion.execute("SELECT COALESCE(SUM(stock_registrado), 0) FROM productos WHERE activo = 1").fetchone()[0]
-        verificaciones = conexion.execute("SELECT COUNT(*) FROM verificaciones").fetchone()[0]
+        verificaciones = conexion.execute("SELECT COUNT(*) FROM sesiones_verificacion").fetchone()[0]
         diferencias = conexion.execute(
             "SELECT COUNT(*) FROM verificaciones WHERE estado = 'requiere_revision'"
         ).fetchone()[0]
@@ -448,6 +517,21 @@ def buscar_productos_voz(termino: str, ruta: Path = RUTA_BASE_DATOS) -> list[Pro
     return [producto for producto in listar_productos(ruta) if coincide_producto(termino, producto)]
 
 
+def buscar_productos_global(termino: str, ruta: Path = RUTA_BASE_DATOS) -> list[ProductoInventario]:
+    """Busca productos activos por identificadores comerciales o nombre, sin modificar datos."""
+    if not isinstance(termino, str):
+        return []
+    consulta = termino.strip().casefold()
+    if not consulta:
+        return []
+    resultados = []
+    for producto in listar_productos(ruta):
+        campos = (producto.id, producto.sku or "", producto.codigo_barras or "", producto.producto)
+        if any(consulta in campo.casefold() for campo in campos):
+            resultados.append(producto)
+    return resultados
+
+
 def crear_solicitud_movimiento(transcripcion: str, operacion: str, cantidad: int,
                                producto_id: str, ruta: Path = RUTA_BASE_DATOS) -> dict:
     if operacion not in {"entrada", "salida"} or type(cantidad) is not int or cantidad <= 0:
@@ -501,8 +585,10 @@ def confirmar_movimiento(token: str, ruta: Path = RUTA_BASE_DATOS) -> dict:
             return {**dict(existente), "duplicado": True}
         if solicitud["estado"] != "pendiente":
             raise MovimientoNoDisponible("La solicitud ya no está disponible para confirmación.")
+        bloqueo_postgres = es_url_postgres(ruta) or (ruta == RUTA_BASE_DATOS and usa_postgres())
         producto = conexion.execute(
-            "SELECT id, producto, stock_registrado FROM productos WHERE id=? AND activo=1",
+            "SELECT id, producto, stock_registrado FROM productos WHERE id=? AND activo=1"
+            + (" FOR UPDATE" if bloqueo_postgres else ""),
             (solicitud["producto_id"],),
         ).fetchone()
         if not producto:

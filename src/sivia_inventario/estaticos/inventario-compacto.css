@@ -1,0 +1,20 @@
+.tabla-inventario-compacta { overflow-x: auto; }
+.tabla-inventario-compacta table { min-width: 980px; }
+.tabla-inventario-compacta th { white-space: nowrap; }
+.tabla-inventario-compacta td { vertical-align: middle; }
+.tabla-inventario-compacta td:nth-child(3) { min-width: 125px; }
+.tabla-inventario-compacta td:nth-child(4) { max-width: 135px; }
+.codigo-barras { display: block; max-width: 125px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: ui-monospace, Consolas, monospace; font-size: 12px; }
+.sin-dato, .solo-lectura { color: #6b83a6; font-size: 12px; }
+.enlace-producto { color: #143f71; text-decoration: none; }
+.enlace-producto:hover { text-decoration: underline; color: #0876ee; }
+.acciones-tabla { display: flex; gap: 7px; align-items: center; white-space: nowrap; }
+.boton-accion { display: inline-flex; align-items: center; gap: 5px; padding: 7px 9px; border-radius: 7px; font-size: 12px; font-weight: 700; text-decoration: none; }
+.boton-accion.editar { background: #e7f1ff; color: #0876ee; }
+.boton-accion.eliminar { background: #ffe7eb; color: #d92a43; }
+.boton-accion:hover { filter: brightness(.96); }
+.filtros-inventario { grid-template-columns: 1.6fr repeat(4, 1fr) auto; }
+.filtros-inventario label { display: block; padding: 7px 11px; font-size: 11px; font-weight: 700; color: #527095; }
+.filtros-inventario label > input, .filtros-inventario label > select { display: block; margin-top: 2px; padding: 4px 0; }
+@media (max-width: 1180px) { .filtros-inventario { grid-template-columns: repeat(3, 1fr); } .filtro-limpiar { min-height: 48px; } }
+@media (max-width: 700px) { .inventory-metrics { grid-template-columns: 1fr 1fr; } .filtros-inventario { grid-template-columns: 1fr; } .tabla-inventario-compacta { border-radius: 9px; } .tabla-inventario-compacta table { min-width: 880px; } .tabla-inventario-compacta th, .tabla-inventario-compacta td { padding: 9px 8px; } .boton-accion { padding: 7px; } .codigo-barras { max-width: 105px; } }

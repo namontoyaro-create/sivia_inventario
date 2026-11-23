@@ -1,6 +1,6 @@
 import pytest
 from sivia_inventario.base_datos import inicializar_base_datos
-from sivia_inventario.repositorio_inventario import (MovimientoNoDisponible, actualizar_producto, confirmar_movimiento, crear_producto, crear_solicitud_movimiento, guardar_verificacion, listar_movimientos, listar_sesiones_verificacion, obtener_producto, obtener_sesion_verificacion)
+from sivia_inventario.repositorio_inventario import (MovimientoNoDisponible, actualizar_producto, buscar_productos_global, confirmar_movimiento, crear_producto, crear_solicitud_movimiento, eliminar_producto, es_ean13_valido, guardar_verificacion, listar_movimientos, listar_sesiones_verificacion, obtener_producto, obtener_sesion_verificacion, resumen_dashboard)
 
 def test_crea_y_actualiza_producto_persistente(tmp_path):
     ruta=tmp_path/"sivia.db"; inicializar_base_datos(ruta)
@@ -53,6 +53,26 @@ def test_conserva_conteo_yolo_confirmado_y_stock_sin_cambios(tmp_path):
     assert listar_sesiones_verificacion(ruta)[0]["objetos_yolo"] == 2
     assert listar_sesiones_verificacion(ruta)[0]["objetos_confirmados"] == 1
     assert obtener_producto("P003", ruta).stock_registrado == stock_inicial
+
+
+def test_prediccion_rechazada_se_conserva_sin_generar_diferencia_de_stock(tmp_path):
+    raiz = tmp_path / "proyecto"; ruta = raiz / "datos" / "sivia.db"
+    evidencia = raiz / "datos" / "evidencias" / "captura.jpg"
+    evidencia.parent.mkdir(parents=True); evidencia.write_bytes(b"evidencia")
+    inicializar_base_datos(ruta)
+
+    codigo = guardar_verificacion(
+        "Correccion humana", "datos/evidencias/captura.jpg", {"P003": 1}, ruta=ruta,
+        conteos_yolo={"P002": 1}, alcance_confirmado=True,
+    )
+
+    detalle = obtener_sesion_verificacion(codigo, ruta)
+    por_codigo = {fila["codigo"]: fila for fila in detalle["productos"]}
+    assert por_codigo["P002"]["cantidad_detectada"] == 0
+    assert por_codigo["P002"]["cantidad_yolo"] == 1
+    assert por_codigo["P002"]["diferencia"] == 0
+    assert por_codigo["P002"]["estado"] == "no_concluyente"
+    assert por_codigo["P003"]["cantidad_detectada"] == 1
 
 
 def test_guarda_productos_de_la_misma_clase_y_procedencia_internet(tmp_path):
@@ -115,6 +135,57 @@ def test_rechaza_sku_y_codigo_barras_duplicados(tmp_path):
         crear_producto("P903", "Demo 2", "Prueba", "candado", "Unidad", 0, ruta, codigo_barras="12345678")
 
 
+def test_valida_digito_verificador_ean13_y_no_impide_ean8_o_upc():
+    assert es_ean13_valido("2000000000015")
+    assert not es_ean13_valido("2000000000014")
+
+
+def test_rechaza_ean13_con_digito_verificador_invalido(tmp_path):
+    ruta = tmp_path / "sivia.db"; inicializar_base_datos(ruta)
+    with pytest.raises(ValueError, match="EAN-13"):
+        crear_producto("P906", "Demo", "Prueba", "candado", "Unidad", 0, ruta, codigo_barras="2000000000014")
+
+
+def test_eliminacion_logica_conserva_registro_en_la_base(tmp_path):
+    ruta = tmp_path / "sivia.db"; inicializar_base_datos(ruta)
+    eliminar_producto("P003", ruta)
+
+    assert obtener_producto("P003", ruta) is None
+    from sivia_inventario.base_datos import conectar
+    with conectar(ruta) as conexion:
+        fila = conexion.execute("SELECT id, activo FROM productos WHERE id='P003'").fetchone()
+    assert dict(fila) == {"id": "P003", "activo": 0}
+
+
+def test_persiste_campos_comerciales_al_crear_y_editar(tmp_path):
+    ruta = tmp_path / "sivia.db"; inicializar_base_datos(ruta)
+    crear_producto(
+        "P904", "Candado comercial", "Cerrajería", "candado", "Unidad", 7, ruta,
+        marca="Forte", modelo="Serie Pro", tamano="50 mm", codigo_producto="FOR-50-PRO",
+    )
+    creado = obtener_producto("P904", ruta)
+    assert (creado.marca, creado.modelo, creado.tamano, creado.codigo_producto) == (
+        "Forte", "Serie Pro", "50 mm", "FOR-50-PRO",
+    )
+    actualizar_producto(
+        "P904", "Candado comercial", "Cerrajería", "candado", "Unidad", 7, ruta,
+        marca="Forte", modelo="Serie Ultra", tamano="60 mm", codigo_producto="FOR-60-ULTRA",
+    )
+    editado = obtener_producto("P904", ruta)
+    assert (editado.marca, editado.modelo, editado.tamano, editado.codigo_producto) == (
+        "Forte", "Serie Ultra", "60 mm", "FOR-60-ULTRA",
+    )
+    assert editado.stock_registrado == 7
+
+
+def test_rechaza_clase_ia_fuera_del_catalogo_oficial(tmp_path):
+    ruta = tmp_path / "sivia.db"; inicializar_base_datos(ruta)
+    with pytest.raises(ValueError, match="clases oficiales"):
+        crear_producto("P905", "Producto", "Prueba", "clase_inventada", "Unidad", 0, ruta)
+    with pytest.raises(ValueError, match="clases oficiales"):
+        actualizar_producto("P003", "Candado", "Cerrajería", "clase_inventada", "Unidad", 20, ruta)
+
+
 
 def test_vincula_fotografias_locales_revisadas_sin_tocar_stock(tmp_path):
     from sivia_inventario.repositorio_inventario import vincular_fotografias_catalogo, listar_productos
@@ -125,3 +196,36 @@ def test_vincula_fotografias_locales_revisadas_sin_tocar_stock(tmp_path):
     assert set(resultado["vinculados"]) == set(productos)
     assert all(producto.imagen_ruta and producto.imagen_ruta.startswith("datos/imagenes/") for producto in productos.values())
     assert {producto.id: producto.stock_registrado for producto in productos.values()} == stock_inicial
+
+
+def test_dashboard_cuenta_sesiones_y_filtros_del_historial_sin_tocar_stock(tmp_path):
+    raiz = tmp_path / "proyecto"
+    ruta = raiz / "datos" / "sivia.db"
+    evidencia = raiz / "datos" / "evidencias" / "captura.jpg"
+    evidencia.parent.mkdir(parents=True)
+    evidencia.write_bytes(b"evidencia")
+    inicializar_base_datos(ruta)
+    stock_inicial = obtener_producto("P003", ruta).stock_registrado
+
+    guardar_verificacion(
+        "Prueba", "datos/evidencias/captura.jpg", {"P003": 1, "P004": 2}, ruta=ruta,
+        conteos_yolo={"P003": 1, "P004": 2}, alcance_confirmado=True,
+    )
+
+    assert resumen_dashboard(ruta)["verificaciones"] == 1
+    assert len(listar_sesiones_verificacion(ruta, producto_id="P003")) == 1
+    assert not listar_sesiones_verificacion(ruta, producto_id="P005")
+    assert obtener_producto("P003", ruta).stock_registrado == stock_inicial
+
+
+def test_busqueda_global_encuentra_nombre_codigo_sku_y_barras(tmp_path):
+    ruta = tmp_path / "sivia.db"
+    inicializar_base_datos(ruta)
+    crear_producto(
+        "P910", "Candado de búsqueda", "Cerrajería", "candado", "Unidad", 3, ruta,
+        sku="CAN-910", codigo_barras="12345678",
+    )
+
+    for termino in ("candado de búsqueda", "P910", "can-910", "12345678"):
+        assert [producto.id for producto in buscar_productos_global(termino, ruta)] == ["P910"]
+    assert buscar_productos_global("sin coincidencia", ruta) == []

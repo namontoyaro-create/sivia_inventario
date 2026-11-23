@@ -18,6 +18,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.concurrency import run_in_threadpool
 from starlette.middleware.sessions import SessionMiddleware
+from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
 
 from sivia_inventario.base_datos import RAIZ, inicializar_base_datos
 from sivia_inventario.categorias import CATALOGO
@@ -30,13 +31,15 @@ from sivia_inventario.preparacion_v2 import (
     plan_mejora_dataset,
     propuestas_pendientes,
     rechazar_propuesta,
+    registrar_correccion_verificacion,
     registrar_procedencia_imagen,
     registrar_aprobaciones,
 )
-from sivia_inventario.repositorio_inventario import (MovimientoNoDisponible, actualizar_producto, buscar_productos_voz, confirmar_movimiento, crear_producto, crear_solicitud_movimiento, eliminar_producto, guardar_verificacion, listar_alertas, listar_categorias, listar_movimientos, listar_presentaciones, listar_productos, listar_productos_por_clase, listar_sesiones_verificacion, obtener_sesion_verificacion, obtener_producto, resumen_dashboard, stock_por_categoria, actividad_dashboard)
+from sivia_inventario.repositorio_inventario import (MovimientoNoDisponible, actualizar_producto, buscar_productos_global, buscar_productos_voz, confirmar_movimiento, crear_producto, crear_solicitud_movimiento, eliminar_producto, guardar_verificacion, listar_alertas, listar_categorias, listar_movimientos, listar_presentaciones, listar_productos, listar_productos_por_clase, listar_sesiones_verificacion, obtener_sesion_verificacion, obtener_producto, resumen_dashboard, stock_por_categoria, actividad_dashboard)
 from sivia_inventario.asistente_voz_logica import interpretar_instruccion
 from sivia_inventario.voz import ErrorAudio, FORMATOS_AUDIO, transcribir_audio, validar_audio
 from sivia_inventario.imagenes import validar_contenido_imagen
+from sivia_inventario.seguridad_archivos import resolver_ruta_controlada
 from sivia_inventario.autenticacion import (
     NOMBRES_ROL, ROLES, autenticar, cambiar_contrasena, crear_primer_administrador,
     crear_usuario, existen_usuarios, listar_solicitudes_cuenta, listar_usuarios,
@@ -56,6 +59,9 @@ MAXIMO_RECTANGULOS_POR_PROPUESTA = 100
 MAXIMO_INTENTOS_LOGIN = 5
 VENTANA_INTENTOS_LOGIN_SEGUNDOS = 15 * 60
 INTENTOS_LOGIN: dict[str, list[float]] = {}
+RUTA_SECRETO_SESION_LOCAL = RAIZ / "datos" / ".sivia_sesion_secreta"
+DURACION_SESION_LOCAL_SEGUNDOS = 8 * 60 * 60
+DURACION_CSRF_LOGIN_SEGUNDOS = 15 * 60
 
 
 def preparar_directorios_web(raiz: Path | None = None) -> tuple[Path, ...]:
@@ -82,7 +88,14 @@ preparar_directorios_web()
 
 
 def contexto_voz(request: Request, **extra):
-    return plantillas.TemplateResponse(request, "asistente_voz.html", {"pagina": "voz", **extra})
+    # Los movimientos de esta tabla proceden de solicitudes confirmadas del asistente de voz.
+    # Se muestran de forma compacta sin duplicar la pantalla completa de historial.
+    recientes = listar_movimientos()[:3]
+    return plantillas.TemplateResponse(
+        request,
+        "asistente_voz.html",
+        {"pagina": "voz", "movimientos_recientes_voz": recientes, **extra},
+    )
 
 
 def nombre_para_cantidad(producto, cantidad: int) -> str:
@@ -163,8 +176,37 @@ async def proteger_aplicacion(request: Request, call_next):
 
 # Se agrega después del middleware de permisos para que la sesión esté creada
 # antes de consultar request.session en cada solicitud.
+def _leer_o_crear_secreto_local(ruta: Path = RUTA_SECRETO_SESION_LOCAL) -> str:
+    """Conserva la firma de sesiones locales entre reinicios de Uvicorn.
+
+    No se usa en producción. El archivo es local, se excluye de Git y se crea
+    de forma exclusiva para no sobrescribir una clave ya utilizada por un
+    navegador con una sesión activa.
+    """
+    try:
+        secreto = ruta.read_text(encoding="utf-8").strip()
+    except FileNotFoundError:
+        ruta.parent.mkdir(parents=True, exist_ok=True)
+        generado = secrets.token_urlsafe(48)
+        try:
+            with ruta.open("x", encoding="utf-8") as archivo:
+                archivo.write(generado)
+            try:
+                ruta.chmod(0o600)
+            except OSError:
+                # Windows puede no aplicar permisos POSIX; el archivo queda
+                # dentro del directorio local de datos, fuera de Git.
+                pass
+            secreto = generado
+        except FileExistsError:
+            secreto = ruta.read_text(encoding="utf-8").strip()
+    if not 32 <= len(secreto) <= 256:
+        raise RuntimeError("El secreto local de sesión no es válido.")
+    return secreto
+
+
 def secreto_sesion() -> str:
-    """Obtiene un secreto explícito en producción, sin una clave fija en código."""
+    """Obtiene una clave estable para firmar cookies de sesión."""
     secreto = os.getenv("SIVIA_SESION_SECRETA")
     if secreto:
         if len(secreto) < 32:
@@ -172,14 +214,33 @@ def secreto_sesion() -> str:
         return secreto
     if os.getenv("SIVIA_ENTORNO", "local").lower() == "produccion":
         raise RuntimeError("Configura SIVIA_SESION_SECRETA antes de iniciar SIVIA en producción.")
-    return secrets.token_urlsafe(32)
+    return _leer_o_crear_secreto_local()
 
+
+def configuracion_cookies_sesion() -> dict[str, int | bool | str]:
+    """Configura cookies seguras sin romper HTTP durante una demostración local."""
+    produccion = os.getenv("SIVIA_ENTORNO", "local").lower() == "produccion"
+    try:
+        duracion = int(os.getenv("SIVIA_DURACION_SESION_SEGUNDOS", str(DURACION_SESION_LOCAL_SEGUNDOS)))
+    except ValueError as error:
+        raise RuntimeError("SIVIA_DURACION_SESION_SEGUNDOS debe ser un entero positivo.") from error
+    if not 300 <= duracion <= 7 * 24 * 60 * 60:
+        raise RuntimeError("La duración de sesión debe estar entre 300 segundos y 7 días.")
+    return {
+        "session_cookie": "sivia_sesion",
+        "same_site": "lax",
+        "https_only": produccion and os.getenv("SIVIA_HTTPS_ONLY", "1") == "1",
+        "max_age": duracion,
+    }
+
+
+SECRETO_SESION = secreto_sesion()
+SERIALIZADOR_CSRF_LOGIN = URLSafeTimedSerializer(SECRETO_SESION, salt="sivia-login-csrf-v1")
 
 app.add_middleware(
     SessionMiddleware,
-    secret_key=secreto_sesion(),
-    same_site="lax",
-    https_only=os.getenv("SIVIA_HTTPS_ONLY", "0") == "1",
+    secret_key=SECRETO_SESION,
+    **configuracion_cookies_sesion(),
 )
 
 
@@ -193,11 +254,46 @@ def csrf_valido(request: Request, recibido: str) -> bool:
     )
 
 
+def crear_token_csrf_login() -> str:
+    """Crea un token CSRF temporal para el formulario público de acceso.
+
+    El inicio de sesión se presenta antes de que exista una sesión autenticada.
+    El token firmado conserva la protección CSRF incluso si una cookie anónima
+    todavía no ha sido devuelta por un navegador o dispositivo móvil.
+    """
+    return SERIALIZADOR_CSRF_LOGIN.dumps({"proposito": "inicio_sesion", "nonce": secrets.token_urlsafe(16)})
+
+
+def csrf_login_valido(request: Request, recibido: str) -> bool:
+    """Valida CSRF de login por sesión o por token firmado de corta duración."""
+    if csrf_valido(request, recibido):
+        return True
+    try:
+        contenido = SERIALIZADOR_CSRF_LOGIN.loads(recibido, max_age=DURACION_CSRF_LOGIN_SEGUNDOS)
+    except (BadSignature, SignatureExpired):
+        return False
+    return isinstance(contenido, dict) and contenido.get("proposito") == "inicio_sesion"
+
+
 def respuesta_csrf_invalido(request: Request, plantilla: str, contexto: dict | None = None):
     datos = {"pagina": "", "error": "La sesión del formulario venció. Actualiza la página e inténtalo nuevamente."}
+    if plantilla == "login.html":
+        # El formulario que se re-renderiza debe quedar listo para un nuevo
+        # intento sin forzar al usuario a recargar la página.
+        datos["csrf_login_token"] = crear_token_csrf_login()
     if contexto:
         datos.update(contexto)
-    return plantillas.TemplateResponse(request, plantilla, datos, status_code=403)
+    respuesta = plantillas.TemplateResponse(request, plantilla, datos, status_code=403)
+    if plantilla == "login.html":
+        respuesta.headers["Cache-Control"] = "no-store, max-age=0"
+    return respuesta
+
+
+def respuesta_login(request: Request, contexto: dict, estado: int = 200):
+    """Renderiza el acceso sin permitir que el navegador reutilice un formulario viejo."""
+    respuesta = plantillas.TemplateResponse(request, "login.html", contexto, status_code=estado)
+    respuesta.headers["Cache-Control"] = "no-store, max-age=0"
+    return respuesta
 
 
 def clave_intento_login(request: Request, usuario: str) -> str:
@@ -223,14 +319,24 @@ def url_imagen(ruta: str | None) -> str | None:
     """Convierte rutas locales permitidas en URL servida por FastAPI."""
     if not ruta:
         return None
-    archivo = Path(str(ruta).replace("\\", "/"))
-    partes = archivo.parts
-    if "productos" in partes:
-        return f"/productos/{archivo.name}"
-    if "imagenes" in partes:
-        indice = partes.index("imagenes")
-        relativo = Path(*partes[indice + 1:]).as_posix()
-        return f"/imagenes/{relativo}"
+    for directorio, prefijo in (("datos/productos", "/productos"), ("datos/imagenes", "/imagenes")):
+        try:
+            archivo = resolver_ruta_controlada(
+                str(ruta).replace("\\", "/"),
+                RAIZ,
+                directorio,
+                extensiones=EXTENSIONES_IMAGEN,
+            )
+        except (OSError, ValueError):
+            continue
+        if not archivo.is_file():
+            return None
+        raiz_autorizada = (RAIZ / directorio).resolve()
+        try:
+            relativo = archivo.relative_to(raiz_autorizada).as_posix()
+        except ValueError:
+            return None
+        return f"{prefijo}/{relativo}"
     return None
 
 
@@ -368,26 +474,35 @@ def guardar_configuracion_acceso(
 
 @app.get("/login", response_class=HTMLResponse)
 def login(request: Request):
-    return plantillas.TemplateResponse(request, "login.html", {"pagina": "", "configuracion_pendiente": not existen_usuarios()})
+    return respuesta_login(request, {
+        "pagina": "", "configuracion_pendiente": not existen_usuarios(),
+        "csrf_login_token": crear_token_csrf_login(),
+    })
 
 
 @app.post("/login", response_class=HTMLResponse)
 def iniciar_sesion(request: Request, usuario: str = Form(""), contrasena: str = Form(""), csrf_token: str = Form("")):
-    contexto = {"pagina": "", "usuario_ingresado": usuario, "configuracion_pendiente": not existen_usuarios()}
-    if not csrf_valido(request, csrf_token):
+    contexto = {
+        "pagina": "", "usuario_ingresado": usuario,
+        "configuracion_pendiente": not existen_usuarios(),
+        # Cualquier pantalla de error conserva un formulario listo para el
+        # siguiente intento, sin token vacío ni necesidad de recargar.
+        "csrf_login_token": crear_token_csrf_login(),
+    }
+    if not csrf_login_valido(request, csrf_token):
         return respuesta_csrf_invalido(request, "login.html", contexto)
     if not existen_usuarios():
         contexto["error"] = "Aún no hay una cuenta activa. Una persona autorizada debe completar la configuración inicial."
-        return plantillas.TemplateResponse(request, "login.html", contexto, status_code=403)
+        return respuesta_login(request, contexto, 403)
     clave = clave_intento_login(request, usuario)
     if limite_intentos_superado(clave):
         contexto["error"] = "Demasiados intentos. Espera unos minutos antes de volver a intentarlo."
-        return plantillas.TemplateResponse(request, "login.html", contexto, status_code=429)
+        return respuesta_login(request, contexto, 429)
     cuenta = autenticar(usuario, contrasena)
     if not cuenta:
         registrar_intento_fallido(clave)
         contexto["error"] = "Usuario o contraseña incorrectos."
-        return plantillas.TemplateResponse(request, "login.html", contexto, status_code=401)
+        return respuesta_login(request, contexto, 401)
     INTENTOS_LOGIN.pop(clave, None)
     request.session.clear()
     request.session["usuario"] = cuenta.contexto()
@@ -550,6 +665,15 @@ def inicio(request: Request):
     })
 
 
+@app.get("/buscar", response_class=HTMLResponse)
+def busqueda_global(request: Request, q: str = ""):
+    consulta = q.strip()[:100]
+    resultados = [producto_contexto(producto) for producto in buscar_productos_global(consulta)]
+    return plantillas.TemplateResponse(request, "busqueda_global.html", {
+        "pagina": "", "consulta": consulta, "resultados": resultados,
+    })
+
+
 @app.get("/inventario", response_class=HTMLResponse)
 def inventario(request: Request, mensaje: str | None = None):
     productos = [producto_contexto(p) for p in listar_productos()]
@@ -568,16 +692,18 @@ def nuevo(request: Request):
 
 
 @app.post("/inventario/nuevo")
-async def guardar_nuevo(request: Request, codigo: str = Form(), producto: str = Form(), categoria: str = Form(), categoria_ia: str = Form(), presentacion: str = Form(), stock_registrado: str = Form(), descripcion: str = Form(""), fotografia: UploadFile | None = File(None), sku: str = Form(""), codigo_barras: str = Form(""), proveedor: str = Form(""), precio_compra: str = Form("0"), precio_venta: str = Form("0"), stock_minimo: str = Form("0"), unidad_medida: str = Form("unidad"), estado_producto: str = Form("activo")):
+async def guardar_nuevo(request: Request, codigo: str = Form(), producto: str = Form(), categoria: str = Form(), categoria_ia: str = Form(), presentacion: str = Form(), stock_registrado: str = Form(), descripcion: str = Form(""), fotografia: UploadFile | None = File(None), sku: str = Form(""), marca: str = Form(""), modelo: str = Form(""), tamano: str = Form(""), codigo_producto: str = Form(""), codigo_barras: str = Form(""), proveedor: str = Form(""), precio_compra: str = Form("0"), precio_venta: str = Form("0"), stock_minimo: str = Form("0"), unidad_medida: str = Form("unidad"), estado_producto: str = Form("activo")):
     valores = {"codigo": codigo, "producto": producto, "categoria": categoria, "categoria_ia": categoria_ia,
                "presentacion": presentacion, "stock_registrado": stock_registrado, "descripcion": descripcion,
-               "sku": sku, "codigo_barras": codigo_barras, "proveedor": proveedor,
+               "sku": sku, "marca": marca, "modelo": modelo, "tamano": tamano,
+               "codigo_producto": codigo_producto, "codigo_barras": codigo_barras, "proveedor": proveedor,
                "precio_compra": precio_compra, "precio_venta": precio_venta, "stock_minimo": stock_minimo,
                "unidad_medida": unidad_medida, "estado_producto": estado_producto}
     try:
         imagen_ruta = await guardar_imagen(fotografia)
         crear_producto(codigo, producto, categoria, categoria_ia, presentacion, int(stock_registrado),
-                       descripcion=descripcion, imagen_ruta=imagen_ruta, sku=sku, codigo_barras=codigo_barras,
+                       descripcion=descripcion, imagen_ruta=imagen_ruta, sku=sku, marca=marca, modelo=modelo,
+                       tamano=tamano, codigo_producto=codigo_producto, codigo_barras=codigo_barras,
                        proveedor=proveedor, precio_compra=float(precio_compra), precio_venta=float(precio_venta),
                        stock_minimo=int(stock_minimo), unidad_medida=unidad_medida, estado_producto=estado_producto)
     except (ValueError, TypeError) as error:
@@ -595,15 +721,28 @@ def editar(request: Request, codigo: str):
     return formulario(request, "Editar producto", f"/inventario/{producto.id}/editar", valores, bloqueado=True)
 
 
+@app.get("/inventario/{codigo}", response_class=HTMLResponse)
+def detalle_producto(request: Request, codigo: str):
+    producto = obtener_producto(codigo)
+    if not producto:
+        return HTMLResponse("Producto no encontrado", 404)
+    return plantillas.TemplateResponse(
+        request,
+        "detalle_producto.html",
+        {"pagina": "inventario", "producto": producto_contexto(producto)},
+    )
+
+
 @app.post("/inventario/{codigo}/editar")
-async def guardar_edicion(request: Request, codigo: str, producto: str = Form(), categoria: str = Form(), categoria_ia: str = Form(), presentacion: str = Form(), descripcion: str = Form(""), fotografia: UploadFile | None = File(None), sku: str = Form(""), codigo_barras: str = Form(""), proveedor: str = Form(""), precio_compra: str = Form("0"), precio_venta: str = Form("0"), stock_minimo: str = Form("0"), unidad_medida: str = Form("unidad"), estado_producto: str = Form("activo")):
+async def guardar_edicion(request: Request, codigo: str, producto: str = Form(), categoria: str = Form(), categoria_ia: str = Form(), presentacion: str = Form(), descripcion: str = Form(""), fotografia: UploadFile | None = File(None), sku: str = Form(""), marca: str = Form(""), modelo: str = Form(""), tamano: str = Form(""), codigo_producto: str = Form(""), codigo_barras: str = Form(""), proveedor: str = Form(""), precio_compra: str = Form("0"), precio_venta: str = Form("0"), stock_minimo: str = Form("0"), unidad_medida: str = Form("unidad"), estado_producto: str = Form("activo")):
     existente = obtener_producto(codigo)
     if not existente:
         return HTMLResponse("Producto no encontrado", 404)
     valores = {"codigo": codigo, "producto": producto, "categoria": categoria, "categoria_ia": categoria_ia,
                "presentacion": presentacion, "stock_registrado": existente.stock_registrado,
                "descripcion": descripcion, "imagen_ruta": existente.imagen_ruta,
-               "imagen_url": url_imagen(existente.imagen_ruta), "sku": sku,
+               "imagen_url": url_imagen(existente.imagen_ruta), "sku": sku, "marca": marca,
+               "modelo": modelo, "tamano": tamano, "codigo_producto": codigo_producto,
                "codigo_barras": codigo_barras, "proveedor": proveedor, "precio_compra": precio_compra,
                "precio_venta": precio_venta, "stock_minimo": stock_minimo,
                "unidad_medida": unidad_medida, "estado_producto": estado_producto}
@@ -611,7 +750,8 @@ async def guardar_edicion(request: Request, codigo: str, producto: str = Form(),
         imagen_ruta = await guardar_imagen(fotografia)
         actualizar_producto(codigo, producto, categoria, categoria_ia, presentacion,
                             existente.stock_registrado, descripcion=descripcion, imagen_ruta=imagen_ruta,
-                            sku=sku, codigo_barras=codigo_barras, proveedor=proveedor,
+                            sku=sku, marca=marca, modelo=modelo, tamano=tamano,
+                            codigo_producto=codigo_producto, codigo_barras=codigo_barras, proveedor=proveedor,
                             precio_compra=float(precio_compra), precio_venta=float(precio_venta),
                             stock_minimo=int(stock_minimo), unidad_medida=unidad_medida,
                             estado_producto=estado_producto)
@@ -646,8 +786,7 @@ def verificar(request: Request):
         # la interfaz debe informar el estado y no responder con un error 500.
         return plantillas.TemplateResponse(request, "verificar.html", contexto_detector_no_disponible())
     return plantillas.TemplateResponse(request, "verificar.html", {
-        "pagina": "verificar", "modelo_activo": activo,
-        "productos_catalogo": [producto_contexto(producto) for producto in listar_productos()],
+        "pagina": "verificar", "modelo_activo": activo, "detector_disponible": True,
     })
 
 
@@ -777,11 +916,20 @@ def corregir_anotacion(request: Request, archivo: str):
     if not propuesta:
         return HTMLResponse("Propuesta pendiente no encontrada", 404)
     propuesta["imagen_url"] = "/imagenes/" + archivo.removeprefix("datos/imagenes/")
-    return plantillas.TemplateResponse(request, "corregir_anotacion.html", {"pagina": "entrenamiento", "propuesta": propuesta})
+    return plantillas.TemplateResponse(request, "corregir_anotacion.html", {
+        "pagina": "entrenamiento",
+        "propuesta": propuesta,
+        "clases_ia": sorted({producto.clase_ia for producto in CATALOGO}),
+    })
 
 
 @app.post("/entrenamiento-ia/corregir")
-async def guardar_correccion_anotacion(request: Request, archivo: str = Form(), total: int = Form()):
+async def guardar_correccion_anotacion(
+    request: Request,
+    archivo: str = Form(),
+    total: int = Form(),
+    split_propuesto: str = Form(),
+):
     if not isinstance(total, int) or isinstance(total, bool) or not 1 <= total <= MAXIMO_RECTANGULOS_POR_PROPUESTA:
         return HTMLResponse("La cantidad de rectángulos no es válida.", 400)
     formulario = await request.form()
@@ -790,7 +938,7 @@ async def guardar_correccion_anotacion(request: Request, archivo: str = Form(), 
             "clase": str(formulario.get(f"clase_{indice}", "")),
             "xyxy": [float(formulario[f"{campo}_{indice}"]) for campo in ("x1", "y1", "x2", "y2")],
         } for indice in range(total)]
-        actualizar_rectangulos_propuesta(archivo, objetos)
+        actualizar_rectangulos_propuesta(archivo, objetos, split_propuesto)
     except (KeyError, TypeError, ValueError):
         return HTMLResponse("Las coordenadas deben estar entre 0 y 1 y formar rectángulos válidos.", 400)
     return RedirectResponse("/entrenamiento-ia?mensaje=corregida", 303)
@@ -884,14 +1032,23 @@ async def analizar_verificacion(request: Request, evidencia: UploadFile | None =
     confianzas = {clase: sum(valores) / len(valores) for clase, valores in por_clase.items()}
     visual = resultado_bajo or resultado
     resultado_ruta, resultado_url = guardar_resultado_anotado(visual["imagen_resultado"])
-    catalogo = {p.clase_ia for p in listar_productos()}
+    productos_activos = listar_productos()
+    catalogo = {p.clase_ia for p in productos_activos}
     detectados = []
     for numero, deteccion in enumerate(resultado["detecciones"], start=1):
         clase = deteccion["clase"]
         if clase not in catalogo:
             continue
         compatibles = [producto_contexto(producto) for producto in listar_productos_por_clase(clase)]
-        detectados.append({"id": numero, "clase_ia": clase, "confianza": deteccion["confianza"], "dudosa": bool(deteccion.get("dudosa") or deteccion.get("conflicto")), "compatibles": compatibles})
+        detectados.append({
+            "id": numero,
+            "clase_ia": clase,
+            "confianza": deteccion["confianza"],
+            "dudosa": bool(deteccion.get("dudosa") or deteccion.get("conflicto")),
+            "recuadro_anormal": bool(deteccion.get("recuadro_anormal")),
+            "cobertura_imagen": deteccion.get("cobertura_imagen", 0.0),
+            "compatibles": compatibles,
+        })
     desconocidas = {clase: cantidad for clase, cantidad in resultado["conteos"].items() if clase not in catalogo}
     bajas = [{"clase": item["clase"], "confianza": item["confianza"], "xyxy": item["xyxy"]} for item in (resultado_bajo or {"detecciones": []})["detecciones"]]
     resumen_yolo = []
@@ -907,7 +1064,7 @@ async def analizar_verificacion(request: Request, evidencia: UploadFile | None =
             "dudosas": dudas.get(clase, 0),
         })
     estado_resultado = "detectado" if detectados else ("fuera_catalogo" if desconocidas else ("baja_confianza" if bajas else "sin_deteccion"))
-    return plantillas.TemplateResponse(request, "revision_verificacion.html", {"pagina": "verificar", "detectados": detectados, "desconocidas": desconocidas, "detecciones_bajas": bajas, "estado_resultado": estado_resultado, "evidencia_ruta": evidencia_ruta, "evidencia_url": evidencia_url, "resultado_ruta": resultado_ruta, "resultado_url": resultado_url, "detector": detector, "detector_nombre": detectores[detector]["nombre"], "procedencia": procedencia, "comparacion_modelos": comparacion_modelos, "resumen_yolo": resumen_yolo, "total_yolo": sum(item["cantidad"] for item in resumen_yolo), "aviso": "Predicciones reales del detector seleccionado. Las detecciones de baja confianza no se cuentan."})
+    return plantillas.TemplateResponse(request, "revision_verificacion.html", {"pagina": "verificar", "detectados": detectados, "desconocidas": desconocidas, "detecciones_bajas": bajas, "estado_resultado": estado_resultado, "evidencia_ruta": evidencia_ruta, "evidencia_url": evidencia_url, "resultado_ruta": resultado_ruta, "resultado_url": resultado_url, "detector": detector, "detector_nombre": detectores[detector]["nombre"], "procedencia": procedencia, "comparacion_modelos": comparacion_modelos, "resumen_yolo": resumen_yolo, "total_yolo": sum(item["cantidad"] for item in resumen_yolo), "productos_catalogo": [producto_contexto(producto) for producto in productos_activos], "aviso": "Predicciones reales del detector seleccionado. Las detecciones de baja confianza no se cuentan."})
 
 
 @app.post("/verificar/guardar")
@@ -920,37 +1077,86 @@ async def guardar_revision(request: Request, evidencia_ruta: str = Form(), resul
     conteos_yolo: dict[str, int] = {}
     suma_confianzas: dict[str, float] = {}
     cantidad_confianzas: dict[str, int] = {}
+    clases_corregidas: set[str] = set()
+    hay_correccion_humana = False
     if procedencia not in {"internet", "prueba_fisica", "distribuidora_atencio"}:
         return HTMLResponse("La procedencia de la evidencia no es válida.", 400)
     try:
         for identificador in formulario.getlist("deteccion_id"):
-            producto_id = str(formulario.get(f"producto_{identificador}", "")).strip()
-            if not producto_id:
-                continue
             clase_ia = str(formulario.get(f"clase_{identificador}", "")).strip()
-            compatibles = {producto.id for producto in listar_productos_por_clase(clase_ia)}
-            if producto_id not in compatibles:
-                return HTMLResponse("El producto seleccionado no corresponde a la clase detectada por YOLO.", 400)
+            originales = listar_productos_por_clase(clase_ia)
+            if not originales:
+                return HTMLResponse("La clase original de YOLO no pertenece al catálogo activo.", 400)
             confianza = float(str(formulario.get(f"confianza_{identificador}", "0")))
             if not 0 <= confianza <= 1:
                 raise ValueError
+            # El conteo original queda ligado a la clase predicha, aun si el
+            # usuario la reclasifica o la descarta como falso positivo.
+            # Si hay variantes de la misma clase no se atribuye la predicción
+            # a una de ellas al azar. El resultado visual conserva la clase.
+            if len(originales) == 1:
+                producto_yolo = originales[0].id
+                conteos_yolo[producto_yolo] = conteos_yolo.get(producto_yolo, 0) + 1
+            producto_id = str(formulario.get(f"producto_{identificador}", "")).strip()
+            if not producto_id:
+                continue
+            producto_confirmado = obtener_producto(producto_id)
+            if producto_confirmado is None:
+                return HTMLResponse("El producto confirmado no existe o no está activo.", 400)
+            clases_corregidas.add(producto_confirmado.clase_ia)
+            if producto_confirmado.clase_ia != clase_ia:
+                hay_correccion_humana = True
+            if len(originales) == 1 and producto_confirmado.id != originales[0].id:
+                hay_correccion_humana = True
             conteos[producto_id] = conteos.get(producto_id, 0) + 1
-            conteos_yolo[producto_id] = conteos_yolo.get(producto_id, 0) + 1
             suma_confianzas[producto_id] = suma_confianzas.get(producto_id, 0.0) + confianza
             cantidad_confianzas[producto_id] = cantidad_confianzas.get(producto_id, 0) + 1
+
+        producto_manual = str(formulario.get("producto_manual", "")).strip()
+        cantidad_manual = str(formulario.get("cantidad_manual", "")).strip()
+        if producto_manual or cantidad_manual:
+            if not producto_manual or not cantidad_manual:
+                return HTMLResponse("Selecciona el producto y la cantidad de la corrección manual.", 400)
+            cantidad = int(cantidad_manual)
+            if not 1 <= cantidad <= 1000:
+                return HTMLResponse("La cantidad manual debe estar entre 1 y 1000.", 400)
+            if obtener_producto(producto_manual) is None:
+                return HTMLResponse("El producto agregado manualmente no existe o no está activo.", 400)
+            clases_corregidas.add(obtener_producto(producto_manual).clase_ia)
+            hay_correccion_humana = True
+            conteos[producto_manual] = conteos.get(producto_manual, 0) + cantidad
     except ValueError:
-        return HTMLResponse("Cada conteo debe ser un entero igual o mayor que cero.", 400)
+        return HTMLResponse("Cada cantidad manual debe ser un entero entre 1 y 1000.", 400)
+    if not conteos:
+        return HTMLResponse("Confirma al menos un producto o agrega una corrección manual antes de guardar.", 400)
     try:
-        confianzas = {clave: suma_confianzas[clave] / cantidad_confianzas[clave] for clave in conteos}
-        guardar_verificacion("Verificacion experimental desde imagen", evidencia_ruta, conteos, confianzas,
-                            conteos_yolo=conteos_yolo, detector=detector, alcance=alcance,
-                            alcance_confirmado=alcance_confirmado == "si", evidencia_resultado=resultado_ruta or None,
-                            procedencia=procedencia)
+        confianzas = {
+            clave: suma_confianzas[clave] / cantidad_confianzas[clave]
+            for clave in conteos if clave in suma_confianzas
+        }
+        codigo_verificacion = guardar_verificacion(
+            "Verificacion experimental desde imagen", evidencia_ruta, conteos, confianzas,
+            conteos_yolo=conteos_yolo, detector=detector, alcance=alcance,
+            alcance_confirmado=alcance_confirmado == "si", evidencia_resultado=resultado_ruta or None,
+            procedencia=procedencia,
+        )
     except ValueError:
         return plantillas.TemplateResponse(request, "error_verificacion.html", {
             "pagina": "verificar",
             "error": "No hay productos detectados y confirmados para guardar.",
         }, status_code=400)
+    hay_correccion_humana = hay_correccion_humana or any(
+        conteos.get(producto_id, 0) != conteos_yolo.get(producto_id, 0)
+        for producto_id in set(conteos) | set(conteos_yolo)
+    )
+    if hay_correccion_humana:
+        try:
+            registrar_correccion_verificacion(evidencia_ruta, clases_corregidas)
+        except Exception:
+            REGISTRO.exception(
+                "No se pudo enviar la corrección humana a Entrenamiento IA: verificación=%s",
+                codigo_verificacion,
+            )
     return RedirectResponse("/historial?mensaje=guardado", 303)
 
     try:
@@ -960,9 +1166,36 @@ async def guardar_revision(request: Request, evidencia_ruta: str = Form(), resul
     return RedirectResponse("/historial?mensaje=guardado", 303)
 
 
+def fecha_historial(valor: str, etiqueta: str) -> str | None:
+    if not valor:
+        return None
+    try:
+        return datetime.strptime(valor, "%Y-%m-%d").date().isoformat()
+    except ValueError as error:
+        raise ValueError(f"{etiqueta} no tiene un formato de fecha válido.") from error
+
+
 @app.get("/historial", response_class=HTMLResponse)
-def historial(request: Request):
-    return plantillas.TemplateResponse(request, "historial.html", {"pagina": "historial", "verificaciones": listar_sesiones_verificacion()})
+def historial(request: Request, fecha_desde: str = "", fecha_hasta: str = "", producto_id: str = ""):
+    try:
+        desde = fecha_historial(fecha_desde, "La fecha inicial")
+        hasta = fecha_historial(fecha_hasta, "La fecha final")
+        if desde and hasta and desde > hasta:
+            raise ValueError("La fecha inicial no puede ser posterior a la fecha final.")
+    except ValueError as error:
+        return plantillas.TemplateResponse(request, "historial.html", {
+            "pagina": "historial", "verificaciones": [], "productos_filtro": listar_productos(),
+            "filtros": {"fecha_desde": fecha_desde, "fecha_hasta": fecha_hasta, "producto_id": producto_id},
+            "error": str(error),
+        }, status_code=400)
+    return plantillas.TemplateResponse(request, "historial.html", {
+        "pagina": "historial",
+        "verificaciones": listar_sesiones_verificacion(
+            fecha_desde=desde, fecha_hasta=hasta, producto_id=producto_id.strip() or None,
+        ),
+        "productos_filtro": listar_productos(),
+        "filtros": {"fecha_desde": desde or "", "fecha_hasta": hasta or "", "producto_id": producto_id},
+    })
 
 
 @app.get("/historial/{codigo}", response_class=HTMLResponse)

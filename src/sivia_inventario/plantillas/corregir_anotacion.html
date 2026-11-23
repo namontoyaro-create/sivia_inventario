@@ -1,8 +1,68 @@
 {% extends "base.html" %}
 {% block titulo %}Corregir anotación{% endblock %}
 {% block contenido %}
-<style>.anotacion-original{max-width:100%;max-height:580px;object-fit:contain;background:#f7faff;border-radius:8px}</style>
+<style>
+  .anotacion-original { max-width: 100%; max-height: 580px; object-fit: contain; background: #f7faff; border-radius: 8px; }
+  .objeto-anotacion { display: grid; grid-template-columns: 1fr repeat(4, minmax(80px, 1fr)); gap: 10px; align-items: end; margin-bottom: 12px; padding: 12px; border: 1px solid #d9e5f4; border-radius: 8px; }
+  .objeto-anotacion label { display: grid; gap: 4px; }
+  @media (max-width: 780px) { .objeto-anotacion { grid-template-columns: repeat(2, 1fr); } }
+</style>
 <p class="sobretitulo">Entrenamiento IA › Corregir</p>
-<section class="titulo-pagina"><div><h1>Corregir rectángulos</h1><p>{{ propuesta.archivo.split('/')[-1] }} · valores normalizados entre 0 y 1.</p></div><a class="boton secundario" href="/entrenamiento-ia">Volver a revisión</a></section>
-<section class="zona-formulario"><div class="panel formulario"><form method="post" action="/entrenamiento-ia/corregir"><input type="hidden" name="archivo" value="{{ propuesta.archivo }}"><input type="hidden" name="total" value="{{ propuesta.objetos|length }}"><div class="campos-producto campo-ancho">{% for objeto in propuesta.objetos %}<div class="campo-ancho"><strong>{{ objeto.clase }} #{{ loop.index }}</strong></div><label>X1<input name="x1_{{ loop.index0 }}" type="number" step="0.001" min="0" max="1" value="{{ objeto.xyxy[0] }}"></label><label>Y1<input name="y1_{{ loop.index0 }}" type="number" step="0.001" min="0" max="1" value="{{ objeto.xyxy[1] }}"></label><label>X2<input name="x2_{{ loop.index0 }}" type="number" step="0.001" min="0" max="1" value="{{ objeto.xyxy[2] }}"></label><label>Y2<input name="y2_{{ loop.index0 }}" type="number" step="0.001" min="0" max="1" value="{{ objeto.xyxy[3] }}"></label><input type="hidden" name="clase_{{ loop.index0 }}" value="{{ objeto.clase }}">{% endfor %}</div><div class="acciones-form"><a class="boton cancelar" href="/entrenamiento-ia">Cancelar</a><button class="boton primario" type="submit">Guardar corrección pendiente</button></div></form></div><aside class="vista-previa"><h2>Referencia original</h2><img class="anotacion-original" src="{{ propuesta.imagen_url }}" alt="Imagen original"></aside></section>
+<section class="titulo-pagina">
+  <div><h1>Corregir rectángulos</h1><p>{{ propuesta.archivo.split('/')[-1] }} · valores normalizados entre 0 y 1.</p></div>
+  <a class="boton secundario" href="/entrenamiento-ia">Volver a revisión</a>
+</section>
+<section class="zona-formulario">
+  <div class="panel formulario">
+    {% if not propuesta.objetos %}
+      <p class="mensaje-advertencia"><strong>Requiere anotación manual.</strong> Esta corrección humana no conserva cajas YOLO fiables. Añade un rectángulo por cada objeto visible; no se aprobará ni entrenará automáticamente.</p>
+    {% endif %}
+    <form method="post" action="/entrenamiento-ia/corregir" id="formulario-anotacion">
+      <input type="hidden" name="archivo" value="{{ propuesta.archivo }}">
+      <input type="hidden" name="total" id="total-objetos" value="{{ propuesta.objetos|length }}">
+      <div id="objetos-anotacion">
+        {% for objeto in propuesta.objetos %}
+        <div class="objeto-anotacion">
+          <label>Clase IA<select name="clase_{{ loop.index0 }}" required>{% for clase in clases_ia %}<option value="{{ clase }}" {% if clase == objeto.clase %}selected{% endif %}>{{ clase }}</option>{% endfor %}</select></label>
+          <label>X1<input name="x1_{{ loop.index0 }}" type="number" step="0.001" min="0" max="1" value="{{ objeto.xyxy[0] }}" required></label>
+          <label>Y1<input name="y1_{{ loop.index0 }}" type="number" step="0.001" min="0" max="1" value="{{ objeto.xyxy[1] }}" required></label>
+          <label>X2<input name="x2_{{ loop.index0 }}" type="number" step="0.001" min="0" max="1" value="{{ objeto.xyxy[2] }}" required></label>
+          <label>Y2<input name="y2_{{ loop.index0 }}" type="number" step="0.001" min="0" max="1" value="{{ objeto.xyxy[3] }}" required></label>
+        </div>
+        {% endfor %}
+      </div>
+      <button class="boton secundario" type="button" id="agregar-objeto">Agregar rectángulo</button>
+      <label>Reservar para futura revisión del dataset
+        <select name="split_propuesto" required>
+          <option value="" {% if propuesta.split_propuesto not in ['train', 'val', 'test'] %}selected{% endif %} disabled>Selecciona un destino</option>
+          {% for split, etiqueta in [('train', 'Entrenamiento'), ('val', 'Validación'), ('test', 'Test independiente')] %}
+          <option value="{{ split }}" {% if propuesta.split_propuesto == split %}selected{% endif %}>{{ etiqueta }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <p class="ayuda-formulario">Esta selección solo reserva el destino si un administrador aprueba la propuesta; no mueve archivos ni inicia entrenamiento.</p>
+      <div class="acciones-form"><a class="boton cancelar" href="/entrenamiento-ia">Cancelar</a><button class="boton primario" type="submit">Guardar corrección pendiente</button></div>
+    </form>
+  </div>
+  <aside class="vista-previa"><h2>Referencia original</h2><img class="anotacion-original" src="{{ propuesta.imagen_url }}" alt="Imagen original"></aside>
+</section>
+<script>
+  (() => {
+    const clases = {{ clases_ia|tojson }};
+    const contenedor = document.getElementById("objetos-anotacion");
+    const total = document.getElementById("total-objetos");
+    const escapar = (texto) => String(texto).replace(/[&<>"']/g, caracter => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"})[caracter]);
+    const agregar = () => {
+      const indice = Number(total.value);
+      const opciones = clases.map(clase => `<option value="${escapar(clase)}">${escapar(clase)}</option>`).join("");
+      const fila = document.createElement("div");
+      fila.className = "objeto-anotacion";
+      fila.innerHTML = `<label>Clase IA<select name="clase_${indice}" required>${opciones}</select></label><label>X1<input name="x1_${indice}" type="number" step="0.001" min="0" max="1" required></label><label>Y1<input name="y1_${indice}" type="number" step="0.001" min="0" max="1" required></label><label>X2<input name="x2_${indice}" type="number" step="0.001" min="0" max="1" required></label><label>Y2<input name="y2_${indice}" type="number" step="0.001" min="0" max="1" required></label>`;
+      contenedor.appendChild(fila);
+      total.value = String(indice + 1);
+    };
+    document.getElementById("agregar-objeto").addEventListener("click", agregar);
+    if (Number(total.value) === 0) agregar();
+  })();
+</script>
 {% endblock %}

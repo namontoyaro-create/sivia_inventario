@@ -84,7 +84,7 @@ def crear_usuario(usuario: str, nombre: str, rol: str, contrasena: str,
             )
             fila = conexion.execute("SELECT * FROM usuarios WHERE id=?", (cursor.lastrowid,)).fetchone()
     except Exception as error:
-        if "UNIQUE constraint failed" in str(error):
+        if "UNIQUE constraint failed" in str(error) or "duplicate key value" in str(error):
             raise ValueError("Ese nombre de usuario ya existe.") from error
         raise
     resultado = _fila_usuario(fila)
@@ -134,7 +134,7 @@ def solicitar_cuenta(usuario: str, nombre: str, motivo: str = "",
                 (usuario, nombre, motivo),
             )
     except Exception as error:
-        if "UNIQUE constraint failed" in str(error):
+        if "UNIQUE constraint failed" in str(error) or "duplicate key value" in str(error):
             raise ValueError("No se pudo registrar la solicitud. Contacta a un administrador.") from error
         raise
 

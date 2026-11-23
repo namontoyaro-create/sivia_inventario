@@ -1,6 +1,6 @@
 import pytest
 from sivia_inventario.base_datos import inicializar_base_datos
-from sivia_inventario.repositorio_inventario import (MovimientoNoDisponible, actualizar_producto, buscar_productos_global, confirmar_movimiento, crear_producto, crear_solicitud_movimiento, eliminar_producto, es_ean13_valido, guardar_verificacion, listar_movimientos, listar_sesiones_verificacion, obtener_producto, obtener_sesion_verificacion, resumen_dashboard)
+from sivia_inventario.repositorio_inventario import (MovimientoNoDisponible, actualizar_producto, buscar_productos_global, confirmar_movimiento, crear_producto, crear_solicitud_movimiento, eliminar_producto, es_ean13_valido, guardar_verificacion, listar_alertas, listar_alertas_discrepancia_recurrente_ia, listar_alertas_salida_inusual, listar_movimientos, listar_sesiones_verificacion, obtener_producto, obtener_sesion_verificacion, resumen_dashboard)
 
 def test_crea_y_actualiza_producto_persistente(tmp_path):
     ruta=tmp_path/"sivia.db"; inicializar_base_datos(ruta)
@@ -229,3 +229,88 @@ def test_busqueda_global_encuentra_nombre_codigo_sku_y_barras(tmp_path):
     for termino in ("candado de búsqueda", "P910", "can-910", "12345678"):
         assert [producto.id for producto in buscar_productos_global(termino, ruta)] == ["P910"]
     assert buscar_productos_global("sin coincidencia", ruta) == []
+
+
+def _ruta_con_evidencia(tmp_path):
+    raiz = tmp_path / "proyecto"
+    ruta = raiz / "datos" / "sivia.db"
+    evidencia = raiz / "datos" / "evidencias" / "captura.jpg"
+    evidencia.parent.mkdir(parents=True)
+    evidencia.write_bytes(b"evidencia de alertas")
+    inicializar_base_datos(ruta)
+    return ruta
+
+
+def test_alerta_calidad_ia_aparece_con_tres_discrepancias_y_omite_yolo_nulo(tmp_path):
+    ruta = _ruta_con_evidencia(tmp_path)
+    stock_antes = obtener_producto("P003", ruta).stock_registrado
+    for _ in range(3):
+        guardar_verificacion(
+            "Prueba IA", "datos/evidencias/captura.jpg", {"P003": 1}, ruta=ruta,
+            conteos_yolo={"P003": 2}, alcance_confirmado=False,
+        )
+    guardar_verificacion("Registro antiguo", "datos/evidencias/captura.jpg", {"P003": 1}, ruta=ruta)
+
+    alertas = listar_alertas_discrepancia_recurrente_ia(ruta)
+
+    assert len(alertas) == 1
+    assert alertas[0]["codigo"] == "P003"
+    assert alertas[0]["verificaciones_con_diferencia"] == 3
+    assert obtener_producto("P003", ruta).stock_registrado == stock_antes
+
+
+def test_alerta_calidad_ia_no_aparece_con_dos_discrepancias(tmp_path):
+    ruta = _ruta_con_evidencia(tmp_path)
+    for _ in range(2):
+        guardar_verificacion(
+            "Prueba IA", "datos/evidencias/captura.jpg", {"P003": 1}, ruta=ruta,
+            conteos_yolo={"P003": 2}, alcance_confirmado=False,
+        )
+
+    assert listar_alertas_discrepancia_recurrente_ia(ruta) == []
+
+
+def _confirmar_salidas(ruta, cantidades):
+    for cantidad in cantidades:
+        solicitud = crear_solicitud_movimiento(f"Salida de prueba {cantidad}", "salida", cantidad, "P003", ruta)
+        confirmar_movimiento(solicitud["token"], ruta)
+
+
+def test_alerta_salida_inusual_requiere_cinco_salidas_previas_y_no_modifica_stock(tmp_path):
+    ruta = tmp_path / "sivia.db"
+    inicializar_base_datos(ruta)
+    _confirmar_salidas(ruta, [1, 1, 1, 1, 1, 10])
+    stock_antes_consulta = obtener_producto("P003", ruta).stock_registrado
+
+    alertas = listar_alertas_salida_inusual(ruta)
+
+    assert len(alertas) == 1
+    assert alertas[0]["cantidad"] == 10
+    assert alertas[0]["promedio_salidas"] == 1
+    assert obtener_producto("P003", ruta).stock_registrado == stock_antes_consulta
+
+
+def test_alerta_salida_inusual_omite_salidas_normales_o_con_historial_insuficiente(tmp_path):
+    ruta_normal = tmp_path / "normal.db"
+    inicializar_base_datos(ruta_normal)
+    _confirmar_salidas(ruta_normal, [1, 1, 1, 1, 1, 1])
+    assert listar_alertas_salida_inusual(ruta_normal) == []
+
+    ruta_corta = tmp_path / "corta.db"
+    inicializar_base_datos(ruta_corta)
+    _confirmar_salidas(ruta_corta, [1, 1, 1, 1, 10])
+    assert listar_alertas_salida_inusual(ruta_corta) == []
+
+
+def test_alertas_de_stock_no_muestran_diferencia_de_captura_sin_alcance_confirmado(tmp_path):
+    ruta = _ruta_con_evidencia(tmp_path)
+    codigo = guardar_verificacion(
+        "Captura parcial", "datos/evidencias/captura.jpg", {"P003": 1}, ruta=ruta,
+        conteos_yolo={"P003": 2}, alcance_confirmado=False,
+    )
+    from sivia_inventario.base_datos import conectar
+    with conectar(ruta) as conexion:
+        sesion = conexion.execute("SELECT id FROM sesiones_verificacion WHERE codigo_verificacion=?", (codigo,)).fetchone()
+        conexion.execute("UPDATE verificaciones SET estado='requiere_revision' WHERE sesion_id=?", (sesion["id"],))
+
+    assert listar_alertas(ruta) == []

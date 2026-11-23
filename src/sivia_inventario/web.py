@@ -35,7 +35,7 @@ from sivia_inventario.preparacion_v2 import (
     registrar_procedencia_imagen,
     registrar_aprobaciones,
 )
-from sivia_inventario.repositorio_inventario import (MovimientoNoDisponible, actualizar_producto, buscar_productos_global, buscar_productos_voz, confirmar_movimiento, crear_producto, crear_solicitud_movimiento, eliminar_producto, guardar_verificacion, listar_alertas, listar_categorias, listar_movimientos, listar_presentaciones, listar_productos, listar_productos_por_clase, listar_sesiones_verificacion, obtener_sesion_verificacion, obtener_producto, resumen_dashboard, stock_por_categoria, actividad_dashboard)
+from sivia_inventario.repositorio_inventario import (MovimientoNoDisponible, actualizar_producto, buscar_productos_global, buscar_productos_voz, confirmar_movimiento, crear_producto, crear_solicitud_movimiento, eliminar_producto, guardar_verificacion, listar_alertas, listar_alertas_discrepancia_recurrente_ia, listar_alertas_salida_inusual, listar_categorias, listar_movimientos, listar_presentaciones, listar_productos, listar_productos_por_clase, listar_sesiones_verificacion, obtener_sesion_verificacion, obtener_producto, resumen_dashboard, stock_por_categoria, actividad_dashboard)
 from sivia_inventario.asistente_voz_logica import interpretar_instruccion
 from sivia_inventario.voz import ErrorAudio, FORMATOS_AUDIO, transcribir_audio, validar_audio
 from sivia_inventario.imagenes import validar_contenido_imagen
@@ -1208,7 +1208,12 @@ def detalle_historial(request: Request, codigo: str):
 
 @app.get("/alertas", response_class=HTMLResponse)
 def alertas(request: Request):
-    return plantillas.TemplateResponse(request, "alertas.html", {"pagina": "alertas", "alertas": listar_alertas()})
+    return plantillas.TemplateResponse(request, "alertas.html", {
+        "pagina": "alertas",
+        "alertas": listar_alertas(),
+        "alertas_modelo": listar_alertas_discrepancia_recurrente_ia(),
+        "alertas_salidas": listar_alertas_salida_inusual(),
+    })
 
 
 @app.get("/prueba-libre", response_class=HTMLResponse)

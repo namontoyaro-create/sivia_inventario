@@ -47,3 +47,4 @@ datos/evidencias/
 .tmp_*/
 datos/respaldos/
 datos/entrenamiento/
+datos/*.db

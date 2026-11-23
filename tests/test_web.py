@@ -320,6 +320,8 @@ def test_historial_ofrece_filtros_y_alertas_enlazan_a_su_detalle(monkeypatch):
     }]
     monkeypatch.setattr(web, "listar_sesiones_verificacion", lambda **_filtros: sesiones)
     monkeypatch.setattr(web, "listar_alertas", lambda: alertas_demo)
+    monkeypatch.setattr(web, "listar_alertas_discrepancia_recurrente_ia", lambda: [])
+    monkeypatch.setattr(web, "listar_alertas_salida_inusual", lambda: [])
     with TestClient(app) as cliente:
         historial = cliente.get("/historial?fecha_desde=2026-01-01&fecha_hasta=2026-12-31&producto_id=P003")
         alertas = cliente.get("/alertas")

@@ -3,6 +3,7 @@
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 import hashlib
+import math
 from pathlib import Path
 import re
 from uuid import uuid4
@@ -428,6 +429,7 @@ def obtener_sesion_verificacion(codigo: str, ruta: Path = RUTA_BASE_DATOS) -> di
 
 
 def listar_alertas(ruta: Path = RUTA_BASE_DATOS) -> list[dict]:
+    """Diferencias físicas confirmadas, no conteos de una captura parcial."""
     with conectar(ruta) as conexion:
         filas = conexion.execute(
             "SELECT v.id, v.guardada_en, p.id AS codigo, p.producto, p.clase_ia, "
@@ -436,9 +438,61 @@ def listar_alertas(ruta: Path = RUTA_BASE_DATOS) -> list[dict]:
             "FROM verificaciones v JOIN productos p ON p.id=v.producto_id "
             "JOIN sesiones_verificacion s ON s.id=v.sesion_id "
             "LEFT JOIN capturas_verificacion c ON c.id=v.captura_id "
-            "WHERE v.estado='requiere_revision' ORDER BY v.id DESC"
+            "WHERE v.estado='requiere_revision' AND s.alcance_confirmado=1 ORDER BY v.id DESC"
         ).fetchall()
     return [dict(fila) for fila in filas]
+
+
+def listar_alertas_discrepancia_recurrente_ia(ruta: Path = RUTA_BASE_DATOS) -> list[dict]:
+    """Resume correcciones repetidas de YOLO sin convertirlas en alertas de stock."""
+    with conectar(ruta) as conexion:
+        filas = conexion.execute(
+            "SELECT p.id AS codigo, p.producto, COUNT(v.id) AS verificaciones_con_diferencia, "
+            "MAX(v.guardada_en) AS ultima_fecha "
+            "FROM verificaciones v JOIN productos p ON p.id=v.producto_id "
+            "WHERE v.cantidad_yolo IS NOT NULL AND v.cantidad_yolo != v.cantidad_detectada "
+            "GROUP BY p.id, p.producto HAVING COUNT(v.id) >= 3 "
+            "ORDER BY ultima_fecha DESC, p.id"
+        ).fetchall()
+    return [dict(fila) for fila in filas]
+
+
+def listar_alertas_salida_inusual(ruta: Path = RUTA_BASE_DATOS) -> list[dict]:
+    """Encuentra salidas mayores a media + 2 desviaciones de salidas previas.
+
+    La estadística se calcula en Python para conservar compatibilidad entre
+    SQLite y PostgreSQL; la consulta no escribe ni altera existencias.
+    """
+    with conectar(ruta) as conexion:
+        filas = conexion.execute(
+            "SELECT m.id, m.codigo_movimiento, m.producto_id AS codigo, p.producto, "
+            "m.cantidad, m.confirmado_en "
+            "FROM movimientos_inventario m JOIN productos p ON p.id=m.producto_id "
+            "WHERE m.operacion='salida' AND m.confirmado_en IS NOT NULL "
+            "ORDER BY m.producto_id, m.confirmado_en, m.id"
+        ).fetchall()
+
+    previas_por_producto: dict[str, list[float]] = {}
+    alertas: list[dict] = []
+    for fila in filas:
+        movimiento = dict(fila)
+        codigo = movimiento["codigo"]
+        previas = previas_por_producto.setdefault(codigo, [])
+        cantidad = float(movimiento["cantidad"])
+        if len(previas) >= 5:
+            promedio = sum(previas) / len(previas)
+            desviacion = math.sqrt(sum((valor - promedio) ** 2 for valor in previas) / len(previas))
+            if cantidad > promedio + 2 * desviacion:
+                alertas.append({
+                    "codigo_movimiento": movimiento["codigo_movimiento"],
+                    "codigo": codigo,
+                    "producto": movimiento["producto"],
+                    "cantidad": int(movimiento["cantidad"]),
+                    "promedio_salidas": promedio,
+                    "fecha": movimiento["confirmado_en"],
+                })
+        previas.append(cantidad)
+    return alertas
 
 
 def resumen_dashboard(ruta: Path = RUTA_BASE_DATOS) -> dict[str, int]:

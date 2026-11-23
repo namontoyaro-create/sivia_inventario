@@ -1,5 +1,21 @@
 {% extends "base.html" %}
 {% block titulo %}Alertas{% endblock %}
 {% block contenido %}
-<p class="sobretitulo">Seguimiento de diferencias</p><section class="titulo-pagina"><div><h1>Alertas de verificaci&oacute;n</h1><p>Solo se muestran diferencias de conteo cuando el alcance f&iacute;sico fue confirmado por una persona.</p></div><a class="boton secundario" href="/historial">Ver historial</a></section><p class="nota-historial">Las alertas de <strong>stock bajo</strong> se consultan en el Dashboard. Esta pantalla no convierte una fotograf&iacute;a parcial ni una prueba de Internet en un faltante de inventario.</p>{% if alertas %}<section class="panel tabla"><table><thead><tr><th>Verificaci&oacute;n</th><th>Fecha</th><th>Producto</th><th>Registrado</th><th>Confirmado</th><th>Diferencia</th><th>Acci&oacute;n</th></tr></thead><tbody>{% for alerta in alertas %}<tr><td><strong>{{ alerta.codigo_verificacion }}</strong></td><td>{{ alerta.guardada_en }}</td><td>{{ alerta.codigo }} &middot; {{ alerta.producto }}</td><td>{{ alerta.stock_registrado }}</td><td>{{ alerta.cantidad_detectada }}</td><td><strong>{{ '%+d'|format(alerta.diferencia) }}</strong></td><td><a href="/historial/{{ alerta.codigo_verificacion }}" class="boton secundario">Revisar evidencia</a></td></tr>{% endfor %}</tbody></table></section>{% else %}<section class="panel estado-vacio"><h2>No hay alertas de verificaci&oacute;n</h2><p>Las diferencias confirmadas aparecer&aacute;n aqu&iacute; despu&eacute;s de guardar una verificaci&oacute;n con alcance completo.</p></section>{% endif %}
+<p class="sobretitulo">Seguimiento de diferencias</p>
+<section class="titulo-pagina"><div><h1>Alertas de verificación</h1><p>Las diferencias físicas solo se muestran cuando una persona confirmó que la evidencia cubre el alcance revisado.</p></div><a class="boton secundario" href="/historial">Ver historial</a></section>
+<p class="nota-historial">Las alertas de <strong>stock bajo</strong> se consultan en el Dashboard. Una fotografía parcial o de Internet no se convierte en faltante de inventario.</p>
+
+{% if alertas %}
+<section class="panel tabla"><h2>Discrepancias físicas confirmadas</h2><table><thead><tr><th>Verificación</th><th>Fecha</th><th>Producto</th><th>Registrado</th><th>Confirmado</th><th>Diferencia</th><th>Acción</th></tr></thead><tbody>{% for alerta in alertas %}<tr><td><strong>{{ alerta.codigo_verificacion }}</strong></td><td>{{ alerta.guardada_en }}</td><td>{{ alerta.codigo }} · {{ alerta.producto }}</td><td>{{ alerta.stock_registrado }}</td><td>{{ alerta.cantidad_detectada }}</td><td><strong>{{ '%+d'|format(alerta.diferencia) }}</strong></td><td><a href="/historial/{{ alerta.codigo_verificacion }}" class="boton secundario">Revisar evidencia</a></td></tr>{% endfor %}</tbody></table></section>
+{% endif %}
+
+{% if alertas_modelo %}
+<section class="panel tabla"><h2>Calidad del modelo IA</h2><p class="nota-historial">Estas alertas muestran correcciones humanas repetidas. No son discrepancias de inventario ni modifican el stock.</p><table><thead><tr><th>Producto</th><th>Verificaciones con diferencia</th><th>Última fecha</th><th>Estado</th></tr></thead><tbody>{% for alerta in alertas_modelo %}<tr><td>{{ alerta.codigo }} · {{ alerta.producto }}</td><td>{{ alerta.verificaciones_con_diferencia }}</td><td>{{ alerta.ultima_fecha }}</td><td><span class="badge bajo">El modelo falla repetidamente con este producto</span></td></tr>{% endfor %}</tbody></table></section>
+{% endif %}
+
+{% if alertas_salidas %}
+<section class="panel tabla"><h2>Salidas inusuales</h2><p class="nota-historial">Se compara cada salida con al menos cinco salidas anteriores del mismo producto. Esta alerta no modifica existencias.</p><table><thead><tr><th>Movimiento</th><th>Producto</th><th>Cantidad</th><th>Promedio anterior</th><th>Fecha</th></tr></thead><tbody>{% for alerta in alertas_salidas %}<tr><td><strong>{{ alerta.codigo_movimiento }}</strong></td><td>{{ alerta.codigo }} · {{ alerta.producto }}</td><td>{{ alerta.cantidad }}</td><td>{{ '%.2f'|format(alerta.promedio_salidas) }}</td><td>{{ alerta.fecha }}</td></tr>{% endfor %}</tbody></table></section>
+{% endif %}
+
+{% if not alertas and not alertas_modelo and not alertas_salidas %}<section class="panel estado-vacio"><h2>No hay alertas de verificación</h2><p>Las diferencias físicas confirmadas, las correcciones repetidas de IA y las salidas inusuales aparecerán aquí cuando existan datos suficientes.</p></section>{% endif %}
 {% endblock %}

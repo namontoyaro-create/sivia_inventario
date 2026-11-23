@@ -6,7 +6,7 @@ import pytest
 
 from sivia_inventario import base_datos
 from sivia_inventario.migraciones_postgres import VERSION_ACTUAL, aplicar_migraciones_postgres
-from sivia_inventario.postgres import _traducir, base_pruebas_postgres_autorizada, es_url_postgres, url_postgres_configurada
+from sivia_inventario.postgres import _eliminar_collate_nocase, _traducir, base_pruebas_postgres_autorizada, es_url_postgres, url_postgres_configurada
 
 
 def test_database_url_se_toma_solo_del_entorno_y_valida_protocolo(monkeypatch):
@@ -38,6 +38,19 @@ def test_traduccion_postgres_cubre_parametros_conflictos_y_codigos():
     assert "LPAD" in _traducir("SELECT printf('VER-%04d', s.id) FROM sesiones_verificacion s")
     assert es_url_postgres("postgresql://host/base")
     assert not es_url_postgres("sqlite:///local.db")
+
+
+def test_elimina_collate_nocase_con_las_variantes_aceptadas_sin_regex_ambigua():
+    assert _eliminar_collate_nocase("SELECT usuario COLLATE NOCASE FROM usuarios") == "SELECT usuario FROM usuarios"
+    assert _eliminar_collate_nocase("SELECT usuario\tCoLlAtE \nNoCaSe FROM usuarios") == "SELECT usuario FROM usuarios"
+    assert _eliminar_collate_nocase("SELECT COLLATE_NOCASE") == "SELECT COLLATE_NOCASE"
+    assert _eliminar_collate_nocase("SELECT usuario COLLATE") == "SELECT usuario COLLATE"
+
+
+def test_elimina_collate_nocase_con_entrada_larga_no_exhibe_backtracking():
+    sql = "SELECT usuario" + (" " * 20_000) + "COLLATE" + ("\t" * 20_000) + "NOCASE FROM usuarios"
+
+    assert _eliminar_collate_nocase(sql) == "SELECT usuario FROM usuarios"
 
 
 def test_insercion_postgres_recupera_el_identificador_devuelto():

@@ -3,6 +3,7 @@ import numpy as np
 import pytest
 
 from sivia_inventario.imagenes import cargar_imagen, validar_contenido_imagen
+from sivia_inventario.seguridad_archivos import ERROR_RUTA_CONTROLADA
 
 
 def test_cargar_imagen_valida(tmp_path):
@@ -19,7 +20,7 @@ def test_cargar_imagen_valida(tmp_path):
 def test_archivo_inexistente(tmp_path):
     ruta = tmp_path / "datos" / "imagenes" / "candado" / "no_existe.jpg"
     ruta.parent.mkdir(parents=True)
-    with pytest.raises(ValueError, match="No se pudo leer"):
+    with pytest.raises(ValueError, match=ERROR_RUTA_CONTROLADA):
         cargar_imagen(ruta, raiz=tmp_path)
 
 
@@ -57,5 +58,5 @@ def test_validar_contenido_imagen_acepta_jpeg_real():
 def test_cargar_imagen_rechaza_escape_de_directorio(tmp_path):
     (tmp_path / "secreto.jpg").write_bytes(b"no importa")
 
-    with pytest.raises(ValueError, match="secuencias '..'"):
+    with pytest.raises(ValueError, match=ERROR_RUTA_CONTROLADA):
         cargar_imagen("../secreto.jpg", raiz=tmp_path)

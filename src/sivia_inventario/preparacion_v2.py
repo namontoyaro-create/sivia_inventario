@@ -458,7 +458,7 @@ def generar_galeria_pendiente(
 ) -> Path:
     """Renderiza propuestas visuales que permanecen pendientes de aprobación."""
     datos = cargar_json(propuestas)
-    salida = resolver_ruta_controlada(salida, RAIZ, "resultados")
+    salida = resolver_ruta_controlada(salida, RAIZ, "resultados", requiere_archivo=False)
     salida.mkdir(parents=True, exist_ok=True)
     tarjetas = []
     for indice, entrada in enumerate(datos.get("imagenes", [])):

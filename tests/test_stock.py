@@ -4,6 +4,7 @@ import pytest
 
 from sivia_inventario.categorias import CATALOGO
 from sivia_inventario.stock import cargar_stock_referencia
+from sivia_inventario.seguridad_archivos import ERROR_RUTA_CONTROLADA
 
 
 @pytest.fixture
@@ -103,12 +104,12 @@ def test_rechaza_json_mal_formado(tmp_path):
 
 
 def test_archivo_inexistente(tmp_path):
-    with pytest.raises(ValueError, match="No se pudo leer"):
+    with pytest.raises(ValueError, match=ERROR_RUTA_CONTROLADA):
         cargar_stock_referencia(tmp_path / "datos" / "no_existe.json", CATALOGO, tmp_path)
 
 
 def test_stock_rechaza_escape_de_directorio(tmp_path):
     (tmp_path / "secreto.json").write_text("{}", encoding="utf-8")
 
-    with pytest.raises(ValueError, match="secuencias '..'"):
+    with pytest.raises(ValueError, match=ERROR_RUTA_CONTROLADA):
         cargar_stock_referencia("../secreto.json", CATALOGO, tmp_path)

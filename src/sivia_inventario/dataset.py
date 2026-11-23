@@ -289,7 +289,7 @@ def exportar(manifiesto: Path, salida: Path, raiz: Path = RAIZ) -> Path:
     raiz = Path(raiz).resolve()
     datos, informe = auditar(manifiesto, raiz)
     ruta_manifiesto = ruta_manifiesto_controlada(manifiesto, raiz)
-    salida = resolver_ruta_controlada(salida, raiz, "datos/entrenamiento")
+    salida = resolver_ruta_controlada(salida, raiz, "datos/entrenamiento", requiere_archivo=False)
     if salida.exists():
         raise FileExistsError("La salida ya existe. Use --salida con una carpeta nueva; no se borrará nada.")
     salida.mkdir(parents=True)
@@ -323,7 +323,7 @@ def exportar(manifiesto: Path, salida: Path, raiz: Path = RAIZ) -> Path:
 def generar_revision(manifiesto: Path, salida: Path, raiz: Path = RAIZ) -> Path:
     raiz = Path(raiz).resolve()
     datos, informe = auditar(manifiesto, raiz, permitir_propuestas=True)
-    salida = resolver_ruta_controlada(salida, raiz, "resultados")
+    salida = resolver_ruta_controlada(salida, raiz, "resultados", requiere_archivo=False)
     salida.mkdir(parents=True, exist_ok=True)
     tarjetas = []
     for i, e in enumerate(datos["imagenes"]):

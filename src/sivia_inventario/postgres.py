@@ -83,6 +83,31 @@ class Resultado:
 _TABLAS_ID = {"sesiones_verificacion", "capturas_verificacion", "verificaciones", "movimientos_inventario", "usuarios", "recuperaciones_contrasena", "solicitudes_cuenta"}
 
 
+def _eliminar_collate_nocase(texto: str) -> str:
+    """Elimina ``COLLATE NOCASE`` de SQL SQLite sin regex ambiguas."""
+    resultado: list[str] = []
+    cursor = 0
+    minusculas = texto.lower()
+    while True:
+        indice = minusculas.find("collate", cursor)
+        if indice < 0:
+            resultado.append(texto[cursor:])
+            return "".join(resultado)
+        inicio_espacios = indice
+        while inicio_espacios > cursor and texto[inicio_espacios - 1].isspace():
+            inicio_espacios -= 1
+        despues_collate = indice + len("collate")
+        despues_espacios = despues_collate
+        while despues_espacios < len(texto) and texto[despues_espacios].isspace():
+            despues_espacios += 1
+        if inicio_espacios == indice or not minusculas.startswith("nocase", despues_espacios):
+            resultado.append(texto[cursor:despues_collate])
+            cursor = despues_collate
+            continue
+        resultado.append(texto[cursor:inicio_espacios])
+        cursor = despues_espacios + len("nocase")
+
+
 def _traducir(sql: str) -> str:
     texto = sql.strip()
     if texto.upper() == "BEGIN IMMEDIATE":
@@ -94,7 +119,7 @@ def _traducir(sql: str) -> str:
         texto += " ON CONFLICT DO NOTHING"
     elif encontrada and encontrada.group(1).lower() in _TABLAS_ID and "RETURNING" not in texto.upper():
         texto += " RETURNING id"
-    texto = re.sub(r"\s+COLLATE\s+NOCASE", "", texto, flags=re.I)
+    texto = _eliminar_collate_nocase(texto)
     texto = texto.replace("printf('VER-%04d', s.id)", "'VER-' || LPAD(s.id::text, 4, '0')")
     return texto.replace("?", "%s")
 

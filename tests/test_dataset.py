@@ -7,6 +7,7 @@ import pytest
 
 from sivia_inventario.categorias import CATALOGO
 from sivia_inventario.dataset import auditar, proponer_caja, resolver_ruta_controlada
+from sivia_inventario.seguridad_archivos import ERROR_RUTA_CONTROLADA
 from sivia_inventario.entrenamiento import (
     configuracion_ultralytics_temporal,
     ruta_configuracion_entrenamiento,
@@ -72,7 +73,7 @@ def test_resolver_ruta_controlada_acepta_archivo_normal_en_directorio_autorizado
 def test_resolver_ruta_controlada_rechaza_secuencias_de_escape(tmp_path, ruta):
     (tmp_path / "secreto.json").write_text("secreto", encoding="utf-8")
 
-    with pytest.raises(ValueError, match="secuencias '..'"):
+    with pytest.raises(ValueError, match=ERROR_RUTA_CONTROLADA):
         resolver_ruta_controlada(ruta, tmp_path, "datos/anotaciones", extensiones={".json"})
 
 
@@ -80,7 +81,7 @@ def test_resolver_ruta_controlada_rechaza_ruta_absoluta_externa(tmp_path):
     externo = tmp_path / "secreto.json"
     externo.write_text("secreto", encoding="utf-8")
 
-    with pytest.raises(ValueError, match="fuera del directorio autorizado"):
+    with pytest.raises(ValueError, match=ERROR_RUTA_CONTROLADA):
         resolver_ruta_controlada(externo, tmp_path, "datos/anotaciones", extensiones={".json"})
 
 
@@ -98,7 +99,7 @@ def test_auditar_rechaza_archivo_del_manifiesto_fuera_de_imagenes(tmp_path):
     ruta.parent.mkdir(parents=True)
     ruta.write_text(json.dumps(manifiesto), encoding="utf-8")
 
-    with pytest.raises(ValueError, match="secuencias '..'"):
+    with pytest.raises(ValueError, match=ERROR_RUTA_CONTROLADA):
         auditar(ruta, tmp_path)
 
 
@@ -112,18 +113,30 @@ def test_resolver_ruta_controlada_rechaza_enlace_simbolico(tmp_path):
     except OSError:
         pytest.skip("El entorno no permite crear enlaces simbólicos.")
 
-    with pytest.raises(ValueError, match="ruta resuelta está fuera del directorio autorizado"):
+    with pytest.raises(ValueError, match=ERROR_RUTA_CONTROLADA):
         resolver_ruta_controlada(
             "datos/imagenes/candado/enlace.jpg", tmp_path, "datos/imagenes",
             extensiones={".jpg"},
         )
 
 
+def test_resolver_ruta_controlada_no_revela_estado_ni_ubicacion(tmp_path):
+    carpeta = tmp_path / "datos" / "anotaciones"
+    carpeta.mkdir(parents=True)
+    errores = []
+    for ruta in ("datos/anotaciones/inexistente.json", "../fuera.json", "datos/anotaciones"):
+        with pytest.raises(ValueError) as error:
+            resolver_ruta_controlada(ruta, tmp_path, "datos/anotaciones", extensiones={".json"})
+        errores.append(str(error.value))
+
+    assert errores == [ERROR_RUTA_CONTROLADA] * 3
+
+
 def test_configuracion_entrenamiento_rechaza_archivo_fuera_de_datos(tmp_path):
     externo = tmp_path / "data.yaml"
     externo.write_text("{}", encoding="utf-8")
 
-    with pytest.raises(ValueError, match="fuera del directorio autorizado"):
+    with pytest.raises(ValueError, match=ERROR_RUTA_CONTROLADA):
         ruta_configuracion_entrenamiento(externo)
 
 

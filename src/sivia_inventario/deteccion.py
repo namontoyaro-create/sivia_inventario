@@ -301,7 +301,7 @@ def procesar_imagen(
             comparaciones=comparar_conteos(conteos, referencia),
         )
     nombre = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S") + "_" + uuid.uuid4().hex[:8]
-    salida = resolver_ruta_controlada(salida, RAIZ, "resultados")
+    salida = resolver_ruta_controlada(salida, RAIZ, "resultados", requiere_archivo=False)
     carpeta = salida / nombre
     carpeta.mkdir(parents=True, exist_ok=False)
     imagen_salida = carpeta / "detecciones.jpg"
